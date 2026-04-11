@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eventtechnik Shop – Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<div class="container mt-5" style="max-width: 500px;">
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-3" id="authTabs">
+        <li class="nav-item">
+            <button class="nav-link active" onclick="showTab('login')">Login</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" onclick="showTab('register')">Registrieren</button>
+        </li>
+    </ul>
+
+    <!-- Meldung -->
+    <div id="message" class="alert d-none"></div>
+
+    <!-- LOGIN -->
+    <div id="loginForm">
+        <h4 class="mb-3">Anmelden</h4>
+        <div class="mb-3">
+            <label class="form-label">Benutzername oder Email</label>
+            <input type="text" id="login_user" class="form-control">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Passwort</label>
+            <input type="password" id="login_pass" class="form-control">
+        </div>
+        <div class="mb-3 form-check">
+            <input type="checkbox" id="remember" class="form-check-input">
+            <label class="form-check-label" for="remember">Angemeldet bleiben</label>
+        </div>
+        <button class="btn btn-primary w-100" onclick="login()">Einloggen</button>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="registerForm" class="d-none">
+        <h4 class="mb-3">Registrieren</h4>
+        <div class="mb-3">
+            <label class="form-label">Anrede</label>
+            <select id="reg_anrede" class="form-select">
+                <option value="">-- wählen --</option>
+                <option value="Herr">Herr</option>
+                <option value="Frau">Frau</option>
+            </select>
+        </div>
+        <div class="row">
+            <div class="col mb-3">
+                <label class="form-label">Vorname</label>
+                <input type="text" id="reg_vorname" class="form-control">
+            </div>
+            <div class="col mb-3">
+                <label class="form-label">Nachname</label>
+                <input type="text" id="reg_nachname" class="form-control">
+            </div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Adresse</label>
+            <input type="text" id="reg_adresse" class="form-control">
+        </div>
+        <div class="row">
+            <div class="col-4 mb-3">
+                <label class="form-label">PLZ</label>
+                <input type="text" id="reg_plz" class="form-control">
+            </div>
+            <div class="col mb-3">
+                <label class="form-label">Ort</label>
+                <input type="text" id="reg_ort" class="form-control">
+            </div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" id="reg_email" class="form-control">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Benutzername</label>
+            <input type="text" id="reg_benutzername" class="form-control">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Passwort</label>
+            <input type="password" id="reg_pass" class="form-control">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Passwort wiederholen</label>
+            <input type="password" id="reg_pass2" class="form-control">
+        </div>
+        <button class="btn btn-success w-100" onclick="register()">Registrieren</button>
+    </div>
+
+</div>
+
+<script>
+    const API = '../backend/logic/requestHandler.php';
+
+    function showTab(tab) {
+        document.getElementById('loginForm').classList.toggle('d-none', tab !== 'login');
+        document.getElementById('registerForm').classList.toggle('d-none', tab !== 'register');
+        document.querySelectorAll('.nav-link').forEach((el, i) => {
+            el.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register'));
+        });
+        hideMessage();
+    }
+
+    function showMessage(text, success) {
+        const el = document.getElementById('message');
+        el.className = 'alert ' + (success ? 'alert-success' : 'alert-danger');
+        el.textContent = text;
+    }
+
+    function hideMessage() {
+        document.getElementById('message').className = 'alert d-none';
+    }
+
+    function login() {
+    const data = new FormData();
+    data.append('action', 'login');
+    data.append('benutzername', document.getElementById('login_user').value);
+    data.append('passwort', document.getElementById('login_pass').value);
+    data.append('remember', document.getElementById('remember').checked ? '1' : '');
+
+    fetch(API, { method: 'POST', body: data })
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                alert('Login erfolgreich!');
+                window.location.href = 'index.html';
+            } else {
+                showMessage(res.message, false);
+            }
+        });
+}
+
+    function register() {
+        const data = new FormData();
+        data.append('action', 'register');
+        data.append('anrede', document.getElementById('reg_anrede').value);
+        data.append('vorname', document.getElementById('reg_vorname').value);
+        data.append('nachname', document.getElementById('reg_nachname').value);
+        data.append('adresse', document.getElementById('reg_adresse').value);
+        data.append('plz', document.getElementById('reg_plz').value);
+        data.append('ort', document.getElementById('reg_ort').value);
+        data.append('email', document.getElementById('reg_email').value);
+        data.append('benutzername', document.getElementById('reg_benutzername').value);
+        data.append('passwort', document.getElementById('reg_pass').value);
+        data.append('passwort2', document.getElementById('reg_pass2').value);
+
+        fetch(API, { method: 'POST', body: data })
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                alert('Registrierung erfolgreich!');
+                window.location.href = 'index.html';
+            } else {
+                showMessage(res.message, false);
+            }
+        });
+}
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
