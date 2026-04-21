@@ -1,87 +1,83 @@
 <?php
-session_start();
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
+header("Content-Type: application/json; charset=UTF-8");
 
-require_once '../config/dataHandler.php';
+require_once __DIR__ . "/../config/DBAccess.php";
+require_once __DIR__ . "/../models/product.class.php";
 
-$action = $_POST['action'] ?? '';
-$db = new DataHandler();
+$conn = DBAccess::getInstance()->getConnection();
+$action = $_GET['action'] ?? '';
 
-switch ($action) {
+if ($action === 'getCategories') {
+    $sql = "SELECT id, name, slug FROM categories ORDER BY name";
+    $result = mysqli_query($conn, $sql);
 
-    case 'login':
-        $input = $_POST['benutzername'] ?? '';
-        $passwort = $_POST['passwort'] ?? '';
+    $categories = [];
+    while ($row = mysqli_fetch_assoc($result)) {
+        $categories[] = $row;
+    }
 
-        // Suche per Username oder Email
-        $user = $db->getUserByUsername($input) ?? $db->getUserByEmail($input);
-
-        if ($user && password_verify($passwort, $user['passwort'])) {
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['rolle'] = $user['rolle'];
-            $_SESSION['benutzername'] = $user['benutzername'];
-
-            // Cookie setzen wenn gewünscht
-            if (!empty($_POST['remember'])) {
-                setcookie('remember_user', $user['benutzername'], time() + (86400 * 30), '/');
-            }
-
-            echo json_encode(['success' => true, 'rolle' => $user['rolle']]);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Benutzername oder Passwort falsch']);
-        }
-        break;
-
-    case 'register':
-        $required = ['vorname', 'nachname', 'adresse', 'plz', 'ort', 'email', 'benutzername', 'passwort'];
-        foreach ($required as $field) {
-            if (empty($_POST[$field])) {
-                echo json_encode(['success' => false, 'message' => 'Alle Felder ausfüllen']);
-                exit;
-            }
-        }
-
-        if ($_POST['passwort'] !== $_POST['passwort2']) {
-            echo json_encode(['success' => false, 'message' => 'Passwörter stimmen nicht überein']);
-            exit;
-        }
-
-        if ($db->usernameExists($_POST['benutzername'])) {
-            echo json_encode(['success' => false, 'message' => 'Benutzername bereits vergeben']);
-            exit;
-        }
-
-        if ($db->emailExists($_POST['email'])) {
-            echo json_encode(['success' => false, 'message' => 'Email bereits registriert']);
-            exit;
-        }
-
-        $data = [
-            'anrede'       => $_POST['anrede'] ?? '',
-            'vorname'      => $_POST['vorname'],
-            'nachname'     => $_POST['nachname'],
-            'adresse'      => $_POST['adresse'],
-            'plz'          => $_POST['plz'],
-            'ort'          => $_POST['ort'],
-            'email'        => $_POST['email'],
-            'benutzername' => $_POST['benutzername'],
-            'passwort'     => password_hash($_POST['passwort'], PASSWORD_BCRYPT)
-        ];
-
-        if ($db->createUser($data)) {
-            echo json_encode(['success' => true, 'message' => 'Registrierung erfolgreich']);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Fehler bei der Registrierung']);
-        }
-        break;
-
-    case 'logout':
-        session_destroy();
-        setcookie('remember_user', '', time() - 3600, '/');
-        echo json_encode(['success' => true]);
-        break;
-
-    default:
-        echo json_encode(['success' => false, 'message' => 'Unbekannte Aktion']);
+    echo json_encode($categories);
+    exit;
 }
+
+if ($action === 'getProducts') {
+    $categoryId = $_GET['category_id'] ?? '';
+    $search = $_GET['search'] ?? '';
+
+    $sql = "
+        SELECT 
+            p.id,
+            p.category_id,
+            p.sku,
+            p.name,
+            p.slug,
+            p.description,
+            p.price,
+            p.currency,
+            p.stock_quantity,
+            p.rating,
+            pi.image_path
+        FROM products p
+        LEFT JOIN product_images pi
+            ON p.id = pi.product_id AND pi.is_primary = 1
+        WHERE p.is_active = 1
+    ";
+
+    if ($categoryId !== '') {
+        $categoryId = (int)$categoryId;
+        $sql .= " AND p.category_id = $categoryId";
+    }
+
+    if ($search !== '') {
+        $search = mysqli_real_escape_string($conn, $search);
+        $sql .= " AND (p.name LIKE '%$search%' OR p.description LIKE '%$search%')";
+    }
+
+    $sql .= " ORDER BY p.name ASC";
+
+    $result = mysqli_query($conn, $sql);
+
+    $products = [];
+    while ($row = mysqli_fetch_assoc($result)) {
+        $product = new Product($row);
+
+        $products[] = [
+            'id' => $product->id,
+            'category_id' => $product->category_id,
+            'sku' => $product->sku,
+            'name' => $product->name,
+            'slug' => $product->slug,
+            'description' => $product->description,
+            'price' => $product->price,
+            'currency' => $product->currency,
+            'stock_quantity' => $product->stock_quantity,
+            'rating' => $product->rating,
+            'image_path' => $product->image_path
+        ];
+    }
+
+    echo json_encode($products);
+    exit;
+}
+
+echo json_encode(['error' => 'Ungültige Aktion']);
