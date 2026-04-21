@@ -13,7 +13,7 @@ $(document).ready(function () {
 
 function loadCategories() {
     $.ajax({
-        url: "../backend/logic/requestHandler.php",
+        url: "/eventavoa/backend/logic/requestHandler.php",
         method: "GET",
         dataType: "json",
         data: {
@@ -39,7 +39,7 @@ function loadProducts() {
     const search = $("#searchInput").val();
 
     $.ajax({
-        url: "../backend/logic/requestHandler.php",
+        url: "/eventavoa/backend/logic/requestHandler.php",
         method: "GET",
         dataType: "json",
         data: {
@@ -77,14 +77,15 @@ function renderProducts(products) {
 
             html += `
                 <div class="col-md-6 col-lg-4 mb-4">
-                    <div class="card product-card h-100 shadow-sm">
-                        <img src="${image}" class="card-img-top" alt="${product.name}">
+                    <div class="card h-100">
+                        <div class="bg-light p-5 text-center">
+                            <h1 class="text-primary">${product.name.charAt(0).toUpperCase()}</h1>
+                        </div>
                         <div class="card-body d-flex flex-column">
                             <h5 class="card-title">${product.name}</h5>
-                            <p class="card-text">${product.description}</p>
-                            <p>Bewertung: ${product.rating} / 5</p>
-                            <p class="product-price mt-auto">${Number(product.price).toFixed(2)} €</p>
-                            <button class="btn btn-primary mt-2" disabled>In den Warenkorb</button>
+                            <p class="card-text text-muted">${product.description || 'Professionelle Ausruestung'}</p>
+                            <p class="fs-5 fw-bold text-primary mt-auto mb-3">${Number(product.price).toFixed(2)} €</p>
+                            <button class="btn btn-primary w-100">In den Warenkorb</button>
                         </div>
                     </div>
                 </div>

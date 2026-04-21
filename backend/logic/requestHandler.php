@@ -35,7 +35,6 @@ if ($action === 'getProducts') {
             p.price,
             p.currency,
             p.stock_quantity,
-            p.rating,
             pi.image_path
         FROM products p
         LEFT JOIN product_images pi
@@ -71,7 +70,6 @@ if ($action === 'getProducts') {
             'price' => $product->price,
             'currency' => $product->currency,
             'stock_quantity' => $product->stock_quantity,
-            'rating' => $product->rating,
             'image_path' => $product->image_path
         ];
     }
