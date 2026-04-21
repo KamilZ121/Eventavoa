@@ -10,21 +10,22 @@ class DBAccess {
 
     private function __construct() {
         $this->conn = new mysqli($this->host, $this->username, $this->password, $this->dbname);
+
         if ($this->conn->connect_error) {
-            die(json_encode(['error' => 'Datenbankverbindung fehlgeschlagen: ' . $this->conn->connect_error]));
+            die("DB Fehler: " . $this->conn->connect_error);
         }
+
         $this->conn->set_charset('utf8mb4');
     }
 
-    public static function getInstance(): DBAccess {
+    public static function getInstance() {
         if (self::$instance === null) {
             self::$instance = new DBAccess();
         }
         return self::$instance;
     }
 
-    public function getConnection(): mysqli {
+    public function getConnection() {
         return $this->conn;
     }
 }
-
