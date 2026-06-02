@@ -56,7 +56,11 @@
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script>
     $(document).ready(function() {
-        $("#header").load("/eventavoa/frontend/sites/header.html");
+        // Header laden, dann Warenkorb aufrufen
+        $("#header").load("/eventavoa/frontend/sites/header.html", function () {
+            updateCartCount();
+            bindCartDropZone();
+        });
         $("#footer").load("/eventavoa/frontend/sites/footer.html");
     });
 </script>

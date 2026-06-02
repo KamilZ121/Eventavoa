@@ -15,10 +15,19 @@
                     <a class="nav-link active" href="/eventavoa/index.html">Home</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#products">Produkte</a>
+                    <a class="nav-link" href="/eventavoa/index.html#products">Produkte</a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#">Warenkorb</a>
+                <li class="nav-item position-relative" id="cartWidget">
+                    <!-- Warenkorb-Link dient gleichzeitig als Drop-Zone -->
+                    <a class="nav-link" id="cartLink" href="/eventavoa/frontend/sites/cart.html">
+                        Warenkorb
+                        <span id="cartCount" class="badge bg-primary">0</span>
+                    </a>
+                    <!-- Mini-Warenkorb bei hover -->
+                    <div id="miniCart" class="shadow rounded bg-white text-dark p-3"
+                         style="display: none; position: absolute; right: 0; min-width: 280px; z-index: 1050;">
+                        <div id="miniCartContent"></div>
+                    </div>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="/eventavoa/frontend/sites/login.html">Login</a>
@@ -27,6 +36,58 @@
         </div>
     </div>
 </nav>
+
+<!-- Mini-Warenkorb -->
+<script>
+(function () {
+    const CART_URL = "/eventavoa/backend/logic/cartHandler.php";
+    const widget = document.getElementById("cartWidget");
+    const panel = document.getElementById("miniCart");
+    const content = document.getElementById("miniCartContent");
+
+    if (!widget) {
+        return;
+    }
+
+    // Warenkorb Inhalt holen und im Mini-Fenster anzeigen
+    function loadMiniCart() {
+        fetch(CART_URL + "?action=getCart")
+            .then(r => r.json())
+            .then(cart => {
+                if (!cart.items || cart.items.length === 0) {
+                    content.innerHTML = '<p class="text-muted mb-0">Ihr Warenkorb ist leer.</p>';
+                    return;
+                }
+
+                let html = "";
+                cart.items.forEach(item => {
+                    html += `
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>${item.qty}× ${item.name}</span>
+                            <span class="ms-3">${item.line_total.toFixed(2)} €</span>
+                        </div>`;
+                });
+                html += `
+                    <hr class="my-2">
+                    <div class="d-flex justify-content-between fw-bold mb-2">
+                        <span>Gesamt</span>
+                        <span>${cart.total.toFixed(2)} €</span>
+                    </div>
+                    <a href="/eventavoa/frontend/sites/cart.html" class="btn btn-primary btn-sm w-100">Zum Warenkorb</a>`;
+                content.innerHTML = html;
+            });
+    }
+
+    // Beim Hovern öffnen und Inhalt laden
+    widget.addEventListener("mouseenter", function () {
+        loadMiniCart();
+        panel.style.display = "block";
+    });
+    widget.addEventListener("mouseleave", function () {
+        panel.style.display = "none";
+    });
+})();
+</script>
 
 <!-- HERO SECTION -->
 <section class="bg-primary text-white py-5">
