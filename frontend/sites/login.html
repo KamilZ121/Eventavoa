@@ -154,8 +154,10 @@
             .then(r => r.json())
             .then(res => {
                 if (res.success) {
-                    alert('Login erfolgreich!');
-                    window.location.href = '/eventavoa/index.html';
+                    showMessage('Login erfolgreich! Sie werden weitergeleitet ...', true);
+                    setTimeout(function () {
+                        window.location.href = '/eventavoa/index.html';
+                    }, 1000);
                 } else {
                     showMessage(res.message, false);
                 }
@@ -180,8 +182,10 @@
             .then(r => r.json())
             .then(res => {
                 if (res.success) {
-                    alert('Registrierung erfolgreich!');
-                    window.location.href = '/eventavoa/index.html';
+                    showMessage('Registrierung erfolgreich! Sie werden weitergeleitet ...', true);
+                    setTimeout(function () {
+                        window.location.href = '/eventavoa/index.html';
+                    }, 1500);
                 } else {
                     showMessage(res.message, false);
                 }
