@@ -7,6 +7,11 @@ require_once __DIR__ . "/../config/DBAccess.php";
 $conn = DBAccess::getInstance()->getConnection();
 $action = $_REQUEST['action'] ?? '';
 
+// keine Session aber remember me cookie
+if (!isset($_SESSION['user_id'])) {
+    tryRememberLogin($conn);
+}
+
 // Neuen Benutzer registrieren
 if ($action === 'register') {
     $anrede = trim($_POST['anrede'] ?? '');
@@ -91,6 +96,25 @@ if ($action === 'login') {
     $_SESSION['benutzername'] = $user['benutzername'];
     $_SESSION['rolle'] = $user['rolle'];
 
+    // remember me cookie
+    if (($_POST['remember'] ?? '') === '1') {
+        $token = bin2hex(random_bytes(32));
+        $tokenHash = hash('sha256', $token);
+        $userId = (int)$user['id'];
+
+        $upd = mysqli_prepare($conn, "UPDATE users SET remember_token = ? WHERE id = ?");
+        mysqli_stmt_bind_param($upd, "si", $tokenHash, $userId);
+        mysqli_stmt_execute($upd);
+
+        // 30 tage
+        setcookie('remember', $userId . ':' . $token, [
+            'expires' => time() + 30 * 24 * 60 * 60,
+            'path' => '/',
+            'httponly' => true,
+            'samesite' => 'Lax'
+        ]);
+    }
+
     echo json_encode(['success' => true]);
     exit;
 }
@@ -111,6 +135,18 @@ if ($action === 'status') {
 
 // Benutzer ausloggen
 if ($action === 'logout') {
+    // remember me in db
+    if (isset($_SESSION['user_id'])) {
+        $userId = (int)$_SESSION['user_id'];
+        $upd = mysqli_prepare($conn, "UPDATE users SET remember_token = NULL WHERE id = ?");
+        mysqli_stmt_bind_param($upd, "i", $userId);
+        mysqli_stmt_execute($upd);
+    }
+    // löschen
+    if (isset($_COOKIE['remember'])) {
+        setcookie('remember', '', ['expires' => time() - 3600, 'path' => '/']);
+    }
+
     session_unset();
     session_destroy();
     echo json_encode(['success' => true]);
@@ -118,3 +154,34 @@ if ($action === 'logout') {
 }
 
 echo json_encode(['success' => false, 'message' => 'Ungültige Aktion']);
+
+// auto login
+function tryRememberLogin($conn) {
+    if (empty($_COOKIE['remember'])) {
+        return;
+    }
+
+    // Cookie
+    $parts = explode(':', $_COOKIE['remember'], 2);
+    if (count($parts) !== 2) {
+        return;
+    }
+
+    $userId = (int)$parts[0];
+    $tokenHash = hash('sha256', $parts[1]);
+
+    $stmt = mysqli_prepare($conn, "SELECT id, benutzername, rolle, remember_token FROM users WHERE id = ? AND aktiv = 1");
+    mysqli_stmt_bind_param($stmt, "i", $userId);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $user = mysqli_fetch_assoc($result);
+
+    // wenn cookie gesetzt ist und mit hash übereinstimmt einloggen
+    if (!$user || empty($user['remember_token']) || !hash_equals($user['remember_token'], $tokenHash)) {
+        return;
+    }
+
+    $_SESSION['user_id'] = (int)$user['id'];
+    $_SESSION['benutzername'] = $user['benutzername'];
+    $_SESSION['rolle'] = $user['rolle'];
+}

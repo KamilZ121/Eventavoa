@@ -140,6 +140,7 @@ CREATE TABLE `users` (
   `passwort_hash` varchar(255) NOT NULL,
   `rolle` enum('admin','user') NOT NULL DEFAULT 'user',
   `aktiv` tinyint(1) NOT NULL DEFAULT 1,
+  `remember_token` varchar(64) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
