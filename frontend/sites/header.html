@@ -10,12 +10,22 @@
         </button>
 
         <div class="collapse navbar-collapse" id="mainNav">
-            <ul class="navbar-nav ms-auto">
+            <ul class="navbar-nav me-auto">
                 <li class="nav-item">
                     <a class="nav-link active" href="/eventavoa/index.html">Home</a>
                 </li>
-                <li class="nav-item">
+                <li class="nav-item" id="navProdukte">
                     <a class="nav-link" href="/eventavoa/index.html#products">Produkte</a>
+                </li>
+                <!-- Admin -->
+                <li class="nav-item" id="navAdminProdukte" style="display: none;">
+                    <a class="nav-link" href="#">Produkte bearbeiten</a>
+                </li>
+                <li class="nav-item" id="navAdminKunden" style="display: none;">
+                    <a class="nav-link" href="#">Kunden bearbeiten</a>
+                </li>
+                <li class="nav-item" id="navAdminGutscheine" style="display: none;">
+                    <a class="nav-link" href="#">Gutscheine verwalten</a>
                 </li>
                 <li class="nav-item position-relative" id="cartWidget">
                     <!-- Warenkorb-Link dient gleichzeitig als Drop-Zone -->
@@ -29,6 +39,9 @@
                         <div id="miniCartContent"></div>
                     </div>
                 </li>
+            </ul>
+
+            <ul class="navbar-nav">
                 <li class="nav-item" id="navLogin">
                     <a class="nav-link" href="/eventavoa/frontend/sites/login.html">Login</a>
                 </li>
@@ -37,6 +50,9 @@
                         <span class="navbar-text text-white fw-semibold me-2" id="navGreeting"></span>
                         <a class="btn btn-sm btn-secondary my-1" href="#" id="logoutBtn">Logout</a>
                     </div>
+                </li>
+                <li class="nav-item ms-lg-3" id="navKonto" style="display: none;">
+                    <a class="nav-link" href="#">Mein Konto</a>
                 </li>
             </ul>
         </div>
@@ -111,10 +127,24 @@
     fetch(AUTH_URL + "?action=status", { cache: "no-store" })
         .then(r => r.json())
         .then(status => {
-            if (status.loggedIn) {
-                navLogin.style.display = "none";
-                navLogout.style.display = "block";
-                document.getElementById("navGreeting").textContent = "Hallo, " + status.benutzername;
+            if (!status.loggedIn) {
+                return; // Gast: Standardmenü (Home, Produkte, Warenkorb, Login)
+            }
+
+            navLogin.style.display = "none";
+            navLogout.style.display = "block";
+            document.getElementById("navGreeting").textContent = "Hallo, " + status.benutzername;
+
+            if (status.rolle === "admin") {
+                // Admin sieht nur die Verwaltungsbereiche
+                document.getElementById("navProdukte").style.display = "none";
+                document.getElementById("cartWidget").style.display = "none";
+                document.getElementById("navAdminProdukte").style.display = "block";
+                document.getElementById("navAdminKunden").style.display = "block";
+                document.getElementById("navAdminGutscheine").style.display = "block";
+            } else {
+                // Eingeloggter User sieht zusätzlich "Mein Konto"
+                document.getElementById("navKonto").style.display = "block";
             }
         });
 
