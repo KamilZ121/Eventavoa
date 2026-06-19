@@ -153,6 +153,92 @@ if ($action === 'logout') {
     exit;
 }
 
+// Eigene Profildaten liefern (für eingeloggte user)
+if ($action === 'getProfile') {
+    if (!isset($_SESSION['user_id'])) {
+        echo json_encode(['success' => false, 'message' => 'Nicht eingeloggt.']);
+        exit;
+    }
+
+    $userId = (int)$_SESSION['user_id'];
+    $stmt = mysqli_prepare($conn, "SELECT anrede, vorname, nachname, email, benutzername, rolle FROM users WHERE id = ?");
+    mysqli_stmt_bind_param($stmt, "i", $userId);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $user = mysqli_fetch_assoc($result);
+
+    if (!$user) {
+        echo json_encode(['success' => false, 'message' => 'Benutzer nicht gefunden.']);
+        exit;
+    }
+
+    echo json_encode(['success' => true, 'user' => $user]);
+    exit;
+}
+
+// Eigene Stammdaten bearbeiten (passwort nötig)
+if ($action === 'updateProfile') {
+    if (!isset($_SESSION['user_id'])) {
+        echo json_encode(['success' => false, 'message' => 'Nicht eingeloggt.']);
+        exit;
+    }
+
+    $userId = (int)$_SESSION['user_id'];
+    $anrede = trim($_POST['anrede'] ?? '');
+    $vorname = trim($_POST['vorname'] ?? '');
+    $nachname = trim($_POST['nachname'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $benutzername = trim($_POST['benutzername'] ?? '');
+    $passwort = $_POST['passwort'] ?? '';
+
+    // Pflichtfelder
+    if ($vorname === '' || $nachname === '' || $email === '' || $benutzername === '' || $passwort === '') {
+        echo json_encode(['success' => false, 'message' => 'Bitte alle Pflichtfelder ausfüllen.']);
+        exit;
+    }
+
+    // E-Mail Format
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        echo json_encode(['success' => false, 'message' => 'Bitte eine gültige E-Mail-Adresse angeben.']);
+        exit;
+    }
+
+    // Aktuelles Passwort prüfen
+    $stmt = mysqli_prepare($conn, "SELECT passwort_hash FROM users WHERE id = ?");
+    mysqli_stmt_bind_param($stmt, "i", $userId);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $user = mysqli_fetch_assoc($result);
+
+    if (!$user || !password_verify($passwort, $user['passwort_hash'])) {
+        echo json_encode(['success' => false, 'message' => 'Das Passwort ist falsch.']);
+        exit;
+    }
+
+    // E-Mail Benutzername darf nicht wem anderen gehören
+    $check = mysqli_prepare($conn, "SELECT id FROM users WHERE (email = ? OR benutzername = ?) AND id != ?");
+    mysqli_stmt_bind_param($check, "ssi", $email, $benutzername, $userId);
+    mysqli_stmt_execute($check);
+    mysqli_stmt_store_result($check);
+    if (mysqli_stmt_num_rows($check) > 0) {
+        echo json_encode(['success' => false, 'message' => 'E-Mail oder Benutzername ist bereits vergeben.']);
+        exit;
+    }
+
+    // Daten speichern
+    $upd = mysqli_prepare($conn, "UPDATE users SET anrede = ?, vorname = ?, nachname = ?, email = ?, benutzername = ? WHERE id = ?");
+    mysqli_stmt_bind_param($upd, "sssssi", $anrede, $vorname, $nachname, $email, $benutzername, $userId);
+
+    if (mysqli_stmt_execute($upd)) {
+        // Benutzername in der Session aktuell halten
+        $_SESSION['benutzername'] = $benutzername;
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Speichern fehlgeschlagen. Bitte später erneut versuchen.']);
+    }
+    exit;
+}
+
 echo json_encode(['success' => false, 'message' => 'Ungültige Aktion']);
 
 // auto login
