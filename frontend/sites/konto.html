@@ -53,6 +53,20 @@
                     <label class="form-label">Benutzername</label>
                     <input type="text" id="benutzername" class="form-control" required>
                 </div>
+                <div class="mb-3">
+                    <label class="form-label">Adresse</label>
+                    <input type="text" id="adresse" class="form-control" required>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">PLZ</label>
+                        <input type="text" id="plz" class="form-control" required>
+                    </div>
+                    <div class="col-md-8 mb-3">
+                        <label class="form-label">Ort</label>
+                        <input type="text" id="ort" class="form-control" required>
+                    </div>
+                </div>
 
                 <hr>
                 <div class="mb-3">
@@ -101,6 +115,9 @@
             document.getElementById("nachname").value = u.nachname;
             document.getElementById("email").value = u.email;
             document.getElementById("benutzername").value = u.benutzername;
+            document.getElementById("adresse").value = u.adresse || "";
+            document.getElementById("plz").value = u.plz || "";
+            document.getElementById("ort").value = u.ort || "";
             document.getElementById("profileCard").classList.remove("d-none");
         });
 
@@ -113,6 +130,9 @@
         data.append("nachname", document.getElementById("nachname").value);
         data.append("email", document.getElementById("email").value);
         data.append("benutzername", document.getElementById("benutzername").value);
+        data.append("adresse", document.getElementById("adresse").value);
+        data.append("plz", document.getElementById("plz").value);
+        data.append("ort", document.getElementById("ort").value);
         data.append("passwort", document.getElementById("passwort").value);
 
         fetch(AUTH_URL, { method: "POST", body: data })

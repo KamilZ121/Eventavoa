@@ -190,6 +190,15 @@ if ($action === 'getProfile') {
         exit;
     }
 
+    // Standard-Lieferadresse dazuladen
+    $astmt = mysqli_prepare($conn, "SELECT strasse, plz, ort FROM addresses WHERE user_id = ? AND address_type = 'shipping' ORDER BY is_default DESC, id ASC LIMIT 1");
+    mysqli_stmt_bind_param($astmt, "i", $userId);
+    mysqli_stmt_execute($astmt);
+    $addr = mysqli_fetch_assoc(mysqli_stmt_get_result($astmt));
+    $user['adresse'] = $addr['strasse'] ?? '';
+    $user['plz'] = $addr['plz'] ?? '';
+    $user['ort'] = $addr['ort'] ?? '';
+
     echo json_encode(['success' => true, 'user' => $user]);
     exit;
 }
@@ -208,9 +217,13 @@ if ($action === 'updateProfile') {
     $email = trim($_POST['email'] ?? '');
     $benutzername = trim($_POST['benutzername'] ?? '');
     $passwort = $_POST['passwort'] ?? '';
+    $adresse = trim($_POST['adresse'] ?? '');
+    $plz = trim($_POST['plz'] ?? '');
+    $ort = trim($_POST['ort'] ?? '');
 
     // Pflichtfelder
-    if ($vorname === '' || $nachname === '' || $email === '' || $benutzername === '' || $passwort === '') {
+    if ($vorname === '' || $nachname === '' || $email === '' || $benutzername === '' || $passwort === ''
+        || $adresse === '' || $plz === '' || $ort === '') {
         echo json_encode(['success' => false, 'message' => 'Bitte alle Pflichtfelder ausfüllen.']);
         exit;
     }
@@ -250,6 +263,24 @@ if ($action === 'updateProfile') {
     if (mysqli_stmt_execute($upd)) {
         // Benutzername in der Session aktuell halten
         $_SESSION['benutzername'] = $benutzername;
+
+        // Lieferadresse aktualisieren, falls vorhanden - sonst neu anlegen
+        $find = mysqli_prepare($conn, "SELECT id FROM addresses WHERE user_id = ? AND address_type = 'shipping' ORDER BY is_default DESC, id ASC LIMIT 1");
+        mysqli_stmt_bind_param($find, "i", $userId);
+        mysqli_stmt_execute($find);
+        $existing = mysqli_fetch_assoc(mysqli_stmt_get_result($find));
+
+        if ($existing) {
+            $aid = (int)$existing['id'];
+            $ua = mysqli_prepare($conn, "UPDATE addresses SET strasse = ?, plz = ?, ort = ? WHERE id = ?");
+            mysqli_stmt_bind_param($ua, "sssi", $adresse, $plz, $ort, $aid);
+            mysqli_stmt_execute($ua);
+        } else {
+            $ia = mysqli_prepare($conn, "INSERT INTO addresses (user_id, address_type, strasse, plz, ort, is_default) VALUES (?, 'shipping', ?, ?, ?, 1)");
+            mysqli_stmt_bind_param($ia, "isss", $userId, $adresse, $plz, $ort);
+            mysqli_stmt_execute($ia);
+        }
+
         echo json_encode(['success' => true]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Speichern fehlgeschlagen. Bitte später erneut versuchen.']);
