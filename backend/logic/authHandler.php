@@ -21,9 +21,13 @@ if ($action === 'register') {
     $benutzername = trim($_POST['benutzername'] ?? '');
     $passwort = $_POST['passwort'] ?? '';
     $passwort2 = $_POST['passwort2'] ?? '';
+    $adresse = trim($_POST['adresse'] ?? '');
+    $plz = trim($_POST['plz'] ?? '');
+    $ort = trim($_POST['ort'] ?? '');
 
     // Pflichtfelder check
-    if ($vorname === '' || $nachname === '' || $email === '' || $benutzername === '' || $passwort === '') {
+    if ($vorname === '' || $nachname === '' || $email === '' || $benutzername === '' || $passwort === ''
+        || $adresse === '' || $plz === '' || $ort === '') {
         echo json_encode(['success' => false, 'message' => 'Bitte alle Pflichtfelder ausfüllen.']);
         exit;
     }
@@ -61,6 +65,20 @@ if ($action === 'register') {
     mysqli_stmt_bind_param($stmt, "ssssss", $anrede, $vorname, $nachname, $email, $benutzername, $hash);
 
     if (mysqli_stmt_execute($stmt)) {
+        // Adresse speichern
+        $newUserId = mysqli_insert_id($conn);
+        $addr = mysqli_prepare($conn, "
+            INSERT INTO addresses (user_id, address_type, strasse, plz, ort, is_default)
+            VALUES (?, 'shipping', ?, ?, ?, 1)
+        ");
+        mysqli_stmt_bind_param($addr, "isss", $newUserId, $adresse, $plz, $ort);
+        mysqli_stmt_execute($addr);
+
+        // Direkt einloggen nach der Registrierung
+        $_SESSION['user_id'] = $newUserId;
+        $_SESSION['benutzername'] = $benutzername;
+        $_SESSION['rolle'] = 'user';
+
         echo json_encode(['success' => true]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Registrierung fehlgeschlagen. Bitte später erneut versuchen.']);
