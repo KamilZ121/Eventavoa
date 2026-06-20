@@ -125,6 +125,15 @@
 <script>
     const API = '/eventavoa/backend/logic/authHandler.php';
 
+// Checkt ob redirect vorhanden ist, falls nicht wird zur Startseite redirected
+    function getRedirectTarget() {
+        const target = new URLSearchParams(window.location.search).get('redirect');
+        if (target && target.startsWith('/eventavoa/')) {
+            return target;
+        }
+        return '/eventavoa/index.html';
+    }
+
     function showTab(tab) {
         document.getElementById('loginForm').classList.toggle('d-none', tab !== 'login');
         document.getElementById('registerForm').classList.toggle('d-none', tab !== 'register');
@@ -156,7 +165,7 @@
                 if (res.success) {
                     showMessage('Login erfolgreich! Sie werden weitergeleitet ...', true);
                     setTimeout(function () {
-                        window.location.href = '/eventavoa/index.html';
+                        window.location.href = getRedirectTarget();
                     }, 1000);
                 } else {
                     showMessage(res.message, false);
@@ -184,7 +193,7 @@
                 if (res.success) {
                     showMessage('Registrierung erfolgreich! Sie werden weitergeleitet ...', true);
                     setTimeout(function () {
-                        window.location.href = '/eventavoa/index.html';
+                        window.location.href = getRedirectTarget();
                     }, 1500);
                 } else {
                     showMessage(res.message, false);

@@ -1,7 +1,13 @@
 const CART_URL = "/eventavoa/backend/logic/cartHandler.php";
+const ORDER_URL = "/eventavoa/backend/logic/orderHandler.php";
 
 $(document).ready(function () {
     loadCart();
+
+    // Bestellen
+    $("#cartContent").on("click", "#orderBtn", function () {
+        placeOrder();
+    });
 
     // Menge erhöhen
     $("#cartContent").on("click", ".increaseBtn", function () {
@@ -62,6 +68,34 @@ function removeFromCart(productId) {
         success: function (cart) {
             renderCart(cart);
             $("#cartCount").text(cart.count);
+        }
+    });
+}
+
+// Bestellen
+function placeOrder() {
+    $.ajax({
+        url: ORDER_URL,
+        method: "POST",
+        dataType: "json",
+        data: { action: "placeOrder" },
+        success: function (res) {
+            // wenn nicht eingeloggt dann redirect
+            if (res.needsLogin) {
+                window.location.href = "/eventavoa/frontend/sites/login.html?redirect=" +
+                    encodeURIComponent("/eventavoa/frontend/sites/cart.html");
+                return;
+            }
+            if (res.success) {
+                $("#cartContent").html(`
+                    <div class="alert alert-success">
+                        Vielen Dank! Ihre Bestellung Nr. ${res.orderId} über
+                        ${res.gesamt.toFixed(2)} € wurde aufgenommen.
+                    </div>`);
+                $("#cartCount").text(0);
+            } else {
+                alert(res.message);
+            }
         }
     });
 }
