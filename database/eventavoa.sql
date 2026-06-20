@@ -85,7 +85,6 @@ CREATE TABLE `products` (
   `description` text NOT NULL,
   `price` decimal(10,2) NOT NULL,
   `currency` char(3) NOT NULL DEFAULT 'EUR',
-  `stock_quantity` int(11) NOT NULL DEFAULT 0,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -94,10 +93,10 @@ CREATE TABLE `products` (
 -- Daten für Tabelle `products`
 --
 
-INSERT INTO `products` (`id`, `category_id`, `sku`, `name`, `slug`, `description`, `price`, `currency`, `stock_quantity`, `is_active`, `created_at`) VALUES
-(1, 1, 'LGT-001', 'LED PAR Scheinwerfer', 'led-par', 'LED PAR für Bühne.', 129.90, 'EUR', 15, 1, '2026-04-21 10:24:16'),
-(2, 2, 'AUD-001', 'PA Lautsprecher', 'pa-speaker', 'Aktiver Lautsprecher.', 289.00, 'EUR', 10, 1, '2026-04-21 10:24:16'),
-(3, 4, 'ACC-001', 'XLR Kabel', 'xlr-kabel', 'Audiokabel XLR, 10 Meter', 19.90, 'EUR', 50, 1, '2026-04-21 10:24:16');
+INSERT INTO `products` (`id`, `category_id`, `sku`, `name`, `slug`, `description`, `price`, `currency`, `is_active`, `created_at`) VALUES
+(1, 1, 'LGT-001', 'LED PAR Scheinwerfer', 'led-par', 'LED PAR für Bühne.', 129.90, 'EUR', 1, '2026-04-21 10:24:16'),
+(2, 2, 'AUD-001', 'PA Lautsprecher', 'pa-speaker', 'Aktiver Lautsprecher.', 289.00, 'EUR', 1, '2026-04-21 10:24:16'),
+(3, 4, 'ACC-001', 'XLR Kabel', 'xlr-kabel', 'Audiokabel XLR, 10 Meter', 19.90, 'EUR', 1, '2026-04-21 10:24:16');
 
 -- --------------------------------------------------------
 
@@ -258,11 +257,13 @@ ALTER TABLE `product_images`
 CREATE TABLE `orders` (
   `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id` int(10) UNSIGNED NOT NULL,
+  `zahlung_id` int(10) UNSIGNED DEFAULT NULL,
   `gesamt` decimal(10,2) NOT NULL,
   `status` varchar(20) NOT NULL DEFAULT 'offen',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `idx_orders_user_id` (`user_id`),
+  KEY `idx_orders_zahlung_id` (`zahlung_id`),
   CONSTRAINT `fk_orders_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -284,6 +285,32 @@ CREATE TABLE `order_items` (
   CONSTRAINT `fk_order_items_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_order_items_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `zahlungsmoeglichkeiten`
+--
+
+CREATE TABLE `zahlungsmoeglichkeiten` (
+  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id` int(10) UNSIGNED NOT NULL,
+  `typ` varchar(20) NOT NULL,
+  `inhaber` varchar(100) NOT NULL,
+  `nummer` varchar(50) NOT NULL,
+  `pruefziffer` varchar(4) DEFAULT NULL,
+  `gueltig_bis` varchar(5) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_zahlung_user_id` (`user_id`),
+  CONSTRAINT `fk_zahlung_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Constraint der Tabelle `orders` zu `zahlungsmoeglichkeiten` (nach beiden Tabellen)
+--
+ALTER TABLE `orders`
+  ADD CONSTRAINT `fk_orders_zahlung` FOREIGN KEY (`zahlung_id`) REFERENCES `zahlungsmoeglichkeiten` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

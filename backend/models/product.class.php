@@ -8,7 +8,6 @@ class Product {
     public $description;
     public $price;
     public $currency;
-    public $stock_quantity;
     public $image_path;
 
     public function __construct($data) {
@@ -20,7 +19,6 @@ class Product {
         $this->description = $data['description'] ?? null;
         $this->price = $data['price'] ?? null;
         $this->currency = $data['currency'] ?? 'EUR';
-        $this->stock_quantity = $data['stock_quantity'] ?? 0;
         $this->image_path = $data['image_path'] ?? null;
     }
 }

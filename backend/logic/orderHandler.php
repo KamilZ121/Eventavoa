@@ -23,6 +23,17 @@ if ($action === 'placeOrder') {
         exit;
     }
 
+    // Zahlungsmöglichkeit muss ausgewählt sein
+    $zahlungId = (int)($_POST['payment_method_id'] ?? 0);
+    $pcheck = mysqli_prepare($conn, "SELECT id FROM zahlungsmoeglichkeiten WHERE id = ? AND user_id = ?");
+    mysqli_stmt_bind_param($pcheck, "ii", $zahlungId, $userId);
+    mysqli_stmt_execute($pcheck);
+    mysqli_stmt_store_result($pcheck);
+    if (mysqli_stmt_num_rows($pcheck) === 0) {
+        echo json_encode(['success' => false, 'needsPayment' => true, 'message' => 'Bitte eine Zahlungsmöglichkeit auswählen.']);
+        exit;
+    }
+
     // Preise von der DB holen
     $priceStmt = mysqli_prepare($conn, "SELECT price FROM products WHERE id = ? AND is_active = 1");
     $items = [];
@@ -55,8 +66,8 @@ if ($action === 'placeOrder') {
     // Bestellung speichern
     mysqli_begin_transaction($conn);
     try {
-        $ins = mysqli_prepare($conn, "INSERT INTO orders (user_id, gesamt) VALUES (?, ?)");
-        mysqli_stmt_bind_param($ins, "id", $userId, $total);
+        $ins = mysqli_prepare($conn, "INSERT INTO orders (user_id, zahlung_id, gesamt) VALUES (?, ?, ?)");
+        mysqli_stmt_bind_param($ins, "iid", $userId, $zahlungId, $total);
         mysqli_stmt_execute($ins);
         $orderId = mysqli_insert_id($conn);
 

@@ -68,14 +68,54 @@
                     </div>
                 </div>
 
-                <hr>
-                <div class="mb-3">
-                    <label class="form-label">Aktuelles Passwort (zum Speichern erforderlich)</label>
-                    <input type="password" id="passwort" class="form-control" required>
-                </div>
-
                 <button type="submit" class="btn btn-primary w-100">Speichern</button>
             </form>
+        </div>
+    </div>
+
+    <!-- Zahlungsmöglichkeiten -->
+    <div id="paymentSection" class="mt-5 d-none">
+        <h3 class="mb-3">Zahlungsmöglichkeiten</h3>
+        <div id="paymentList" class="mb-3"></div>
+        <div class="card">
+            <div class="card-body">
+                <h6 class="mb-3">Neue Zahlungsmöglichkeit</h6>
+                <form onsubmit="addPayment(); return false;">
+                    <div class="mb-3">
+                        <label class="form-label">Typ</label>
+                        <select id="zahl_typ" class="form-select" required>
+                            <option value="Kreditkarte">Kreditkarte</option>
+                            <option value="Bankeinzug">Bankeinzug</option>
+                            <option value="PayPal">PayPal</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Inhaber</label>
+                        <input type="text" id="zahl_inhaber" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" id="nummerLabel">Kartennummer</label>
+                        <input type="text" id="zahl_nummer" class="form-control" placeholder="XXXX-XXXX-XXXX-XXXX" required>
+                    </div>
+                    <div id="pruefzifferGroup">
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label class="form-label">Gültig bis</label>
+                                <input type="text" id="zahl_gueltig" class="form-control" placeholder="MM/JJ" maxlength="5">
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label class="form-label">Prüfziffer (CVV)</label>
+                                <input type="text" id="zahl_pruefziffer" class="form-control" placeholder="XXX" maxlength="3">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Aktuelles Passwort (zur Bestätigung)</label>
+                        <input type="password" id="zahl_passwort" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Hinzufügen</button>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -86,12 +126,36 @@
     </div>
 </main>
 
+<!-- Passwort bein ändern von Stammdaten -->
+<div class="modal fade" id="passwordModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body">
+                <p class="mb-2">Bitte geben Sie Ihr Passwort ein:</p>
+                <input type="password" id="modalPasswort" class="form-control" autocomplete="current-password">
+                <div id="modalError" class="text-danger small mt-2"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                <button type="button" class="btn btn-primary" onclick="confirmSave()">Bestätigen</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div id="footer"></div>
 
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script>
     $(document).ready(function() {
-        $("#header").load("/eventavoa/frontend/sites/header.html");
+        // Warenkorb counter aktualisieren
+        $("#header").load("/eventavoa/frontend/sites/header.html", function () {
+            fetch("/eventavoa/backend/logic/cartHandler.php?action=getCartCount", { cache: "no-store" })
+                .then(r => r.json())
+                .then(res => {
+                    document.getElementById("cartCount").textContent = res.count;
+                });
+        });
         $("#footer").load("/eventavoa/frontend/sites/footer.html");
     });
 </script>
@@ -101,6 +165,7 @@
 <script>
     const AUTH_URL = "/eventavoa/backend/logic/authHandler.php";
     const ORDER_URL = "/eventavoa/backend/logic/orderHandler.php";
+    const PAYMENT_URL = "/eventavoa/backend/logic/paymentHandler.php";
 
     function showMessage(text, success) {
         const el = document.getElementById("kontoMessage");
@@ -132,11 +197,30 @@
             document.getElementById("plz").value = u.plz || "";
             document.getElementById("ort").value = u.ort || "";
             document.getElementById("profileCard").classList.remove("d-none");
+            loadPaymentMethods();
             loadOrders();
         });
 
-    // Geänderte Daten speichern
+    let passwordModal;
+
+    // Passwort abfragen wenn man speichern klickt
     function saveProfile() {
+        document.getElementById("modalPasswort").value = "";
+        document.getElementById("modalError").textContent = "";
+        if (!passwordModal) {
+            passwordModal = new bootstrap.Modal(document.getElementById("passwordModal"));
+        }
+        passwordModal.show();
+    }
+
+    // Daten tatsächlich speichern
+    function confirmSave() {
+        const passwort = document.getElementById("modalPasswort").value;
+        if (!passwort) {
+            document.getElementById("modalError").textContent = "Bitte Passwort eingeben.";
+            return;
+        }
+
         const data = new FormData();
         data.append("action", "updateProfile");
         data.append("anrede", document.getElementById("anrede").value);
@@ -147,18 +231,140 @@
         data.append("adresse", document.getElementById("adresse").value);
         data.append("plz", document.getElementById("plz").value);
         data.append("ort", document.getElementById("ort").value);
-        data.append("passwort", document.getElementById("passwort").value);
+        data.append("passwort", passwort);
 
         fetch(AUTH_URL, { method: "POST", body: data })
             .then(r => r.json())
             .then(res => {
                 if (res.success) {
+                    passwordModal.hide();
                     showMessage("Daten erfolgreich gespeichert.", true);
-                    document.getElementById("passwort").value = "";
                 } else {
-                    showMessage(res.message, false);
+                    // Fehler im Popup anzeigen
+                    document.getElementById("modalError").textContent = res.message;
                 }
             });
+    }
+
+    // Zahlungsmöglichkeiten anzeigen
+    function loadPaymentMethods() {
+        fetch(PAYMENT_URL + "?action=getPaymentMethods", { cache: "no-store" })
+            .then(r => r.json())
+            .then(res => {
+                if (!res.success) {
+                    return;
+                }
+                document.getElementById("paymentSection").classList.remove("d-none");
+
+                if (res.methods.length === 0) {
+                    document.getElementById("paymentList").innerHTML =
+                        '<p class="text-muted">Noch keine Zahlungsmöglichkeit hinterlegt.</p>';
+                    return;
+                }
+
+                let html = '<ul class="list-group">';
+                res.methods.forEach(m => {
+                    html += `
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>${m.typ} – ${m.inhaber} – ${m.nummer_maskiert}</span>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deletePayment(${m.id})">Entfernen</button>
+                        </li>`;
+                });
+                html += '</ul>';
+                document.getElementById("paymentList").innerHTML = html;
+            });
+    }
+
+    // Platzhalter ja nach Typ anpassen
+    function updatePaymentForm() {
+        const typ = document.getElementById("zahl_typ").value;
+        const nummer = document.getElementById("zahl_nummer");
+        const label = document.getElementById("nummerLabel");
+        const pruefGroup = document.getElementById("pruefzifferGroup");
+
+        nummer.value = ""; // beim Typwechsel zurücksetzen (anderes Format)
+
+        if (typ === "Kreditkarte") {
+            label.textContent = "Kartennummer";
+            nummer.placeholder = "XXXX-XXXX-XXXX-XXXX";
+            pruefGroup.style.display = "block";
+        } else if (typ === "Bankeinzug") {
+            label.textContent = "IBAN";
+            nummer.placeholder = "ATXX XXXX XXXX XXXX XXXX";
+            pruefGroup.style.display = "none";
+        } else {
+            label.textContent = "PayPal-E-Mail";
+            nummer.placeholder = "name@beispiel.at";
+            pruefGroup.style.display = "none";
+        }
+    }
+    document.getElementById("zahl_typ").addEventListener("change", updatePaymentForm);
+    updatePaymentForm();
+
+    // Neue Zahlungsmöglichkeit hinzufügen
+    function addPayment() {
+        const typ = document.getElementById("zahl_typ").value;
+        const nummer = document.getElementById("zahl_nummer").value.trim();
+        const nummerClean = nummer.replace(/[\s-]/g, "");
+
+        // Format prüfen
+        if (typ === "Kreditkarte" && !/^\d{16}$/.test(nummerClean)) {
+            alert("Die Kartennummer muss aus 16 Ziffern bestehen.");
+            return;
+        }
+        if (typ === "PayPal" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nummer)) {
+            alert("Bitte eine gültige E-Mail Adresse angeben.");
+            return;
+        }
+        if (typ === "Bankeinzug" && !/^AT\d{18}$/.test(nummerClean.toUpperCase())) {
+            alert("Bitte eine gültige IBAN angeben.");
+            return;
+        }
+        const pruefziffer = document.getElementById("zahl_pruefziffer").value.trim();
+        const gueltig = document.getElementById("zahl_gueltig").value.trim();
+        if (typ === "Kreditkarte" && !/^\d{3}$/.test(pruefziffer)) {
+            alert("Die Prüfziffer muss aus 3 Ziffern bestehen.");
+            return;
+        }
+        if (typ === "Kreditkarte" && !/^(0[1-9]|1[0-2])\/\d{2}$/.test(gueltig)) {
+            alert("Bitte ein gültiges Datum angeben.");
+            return;
+        }
+
+        const data = new FormData();
+        data.append("action", "addPaymentMethod");
+        data.append("typ", document.getElementById("zahl_typ").value);
+        data.append("inhaber", document.getElementById("zahl_inhaber").value);
+        data.append("nummer", document.getElementById("zahl_nummer").value);
+        data.append("pruefziffer", pruefziffer);
+        data.append("gueltig_bis", gueltig);
+        data.append("passwort", document.getElementById("zahl_passwort").value);
+
+        fetch(PAYMENT_URL, { method: "POST", body: data })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    document.getElementById("zahl_inhaber").value = "";
+                    document.getElementById("zahl_nummer").value = "";
+                    document.getElementById("zahl_pruefziffer").value = "";
+                    document.getElementById("zahl_gueltig").value = "";
+                    document.getElementById("zahl_passwort").value = "";
+                    loadPaymentMethods();
+                } else {
+                    alert(res.message);
+                }
+            });
+    }
+
+    // Zahlungsmöglichkeit löschen
+    function deletePayment(id) {
+        const data = new FormData();
+        data.append("action", "deletePaymentMethod");
+        data.append("id", id);
+
+        fetch(PAYMENT_URL, { method: "POST", body: data })
+            .then(r => r.json())
+            .then(() => loadPaymentMethods());
     }
 
     // Eigene Bestellungen laden und anzeigen

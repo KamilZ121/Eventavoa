@@ -1,5 +1,6 @@
 const CART_URL = "/eventavoa/backend/logic/cartHandler.php";
 const ORDER_URL = "/eventavoa/backend/logic/orderHandler.php";
+const PAYMENT_URL = "/eventavoa/backend/logic/paymentHandler.php";
 
 $(document).ready(function () {
     loadCart();
@@ -74,11 +75,17 @@ function removeFromCart(productId) {
 
 // Bestellen
 function placeOrder() {
+    const paymentSelect = document.getElementById("paymentSelect");
+    const data = { action: "placeOrder" };
+    if (paymentSelect) {
+        data.payment_method_id = paymentSelect.value;
+    }
+
     $.ajax({
         url: ORDER_URL,
         method: "POST",
         dataType: "json",
-        data: { action: "placeOrder" },
+        data: data,
         success: function (res) {
             // wenn nicht eingeloggt dann redirect
             if (res.needsLogin) {
@@ -128,11 +135,46 @@ function renderCart(cart) {
 
     $("#cartContent").html(`
         <div class="list-group mb-4">${rows}</div>
+        <div id="paymentChoice" class="mb-3"></div>
         <div class="d-flex justify-content-between align-items-center">
             <h4 class="mb-0">Gesamt: ${cart.total.toFixed(2)} €</h4>
             <button class="btn btn-primary btn-lg" id="orderBtn">Bestellen</button>
         </div>
     `);
+    loadPaymentChoices();
+}
+
+// Zahlungsmöglichkeiten für die Auswahl beim Bestellen laden
+function loadPaymentChoices() {
+    fetch(PAYMENT_URL + "?action=getPaymentMethods", { cache: "no-store" })
+        .then(r => r.json())
+        .then(res => {
+            // Nicht eingeloggt -> keine Auswahl
+            if (!res.success) {
+                return;
+            }
+            const el = document.getElementById("paymentChoice");
+            if (!el) {
+                return;
+            }
+
+            if (res.methods.length === 0) {
+                el.innerHTML = `
+                    <div class="alert alert-warning mb-0">
+                        Bitte zuerst eine <a href="/eventavoa/frontend/sites/konto.html">Zahlungsmöglichkeit hinterlegen</a>,
+                        um bestellen zu können.
+                    </div>`;
+                return;
+            }
+
+            let options = "";
+            res.methods.forEach(m => {
+                options += `<option value="${m.id}">${m.typ} – ${m.nummer_maskiert}</option>`;
+            });
+            el.innerHTML = `
+                <label class="form-label">Zahlungsart</label>
+                <select id="paymentSelect" class="form-select">${options}</select>`;
+        });
 }
 
 // Counter im Header

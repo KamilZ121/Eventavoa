@@ -25,7 +25,7 @@ if ($action === 'getProducts') {
     $search = $_GET['search'] ?? '';
 
     $sql = "
-        SELECT 
+        SELECT
             p.id,
             p.category_id,
             p.sku,
@@ -34,7 +34,6 @@ if ($action === 'getProducts') {
             p.description,
             p.price,
             p.currency,
-            p.stock_quantity,
             pi.image_path
         FROM products p
         LEFT JOIN product_images pi
@@ -42,38 +41,40 @@ if ($action === 'getProducts') {
         WHERE p.is_active = 1
     ";
 
+
+    $types = "";
+    $params = [];
+
     if ($categoryId !== '') {
-        $categoryId = (int)$categoryId;
-        $sql .= " AND p.category_id = $categoryId";
+        $sql .= " AND p.category_id = ?";
+        $types .= "i";
+        $params[] = (int)$categoryId;
     }
 
     if ($search !== '') {
-        $search = mysqli_real_escape_string($conn, $search);
-        $sql .= " AND (p.name LIKE '%$search%' OR p.description LIKE '%$search%')";
+        $sql .= " AND (p.name LIKE ? OR p.description LIKE ?)";
+        $like = "%" . $search . "%";
+        $types .= "ss";
+        $params[] = $like;
+        $params[] = $like;
     }
 
     $sql .= " ORDER BY p.name ASC";
 
-    $result = mysqli_query($conn, $sql);
+    $stmt = mysqli_prepare($conn, $sql);
+    if ($types !== "") {
+        mysqli_stmt_bind_param($stmt, $types, ...$params);
+    }
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
 
     $products = [];
     while ($row = mysqli_fetch_assoc($result)) {
-        $product = new Product($row);
 
-        $products[] = [
-            'id' => $product->id,
-            'category_id' => $product->category_id,
-            'sku' => $product->sku,
-            'name' => $product->name,
-            'slug' => $product->slug,
-            'description' => $product->description,
-            'price' => $product->price,
-            'currency' => $product->currency,
-            'stock_quantity' => $product->stock_quantity,
-            'image_path' => $product->image_path
-        ];
+        $products[] = new Product($row);
     }
 
+    // public Properties der Objekte werden automatisch zu JSON
     echo json_encode($products);
     exit;
 }
