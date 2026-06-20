@@ -80,4 +80,94 @@ if ($action === 'placeOrder') {
     exit;
 }
 
+// Eigene Bestellungen
+if ($action === 'getOrders') {
+    if (!isset($_SESSION['user_id'])) {
+        echo json_encode(['success' => false, 'message' => 'Nicht eingeloggt.']);
+        exit;
+    }
+    $userId = (int)$_SESSION['user_id'];
+
+    $ostmt = mysqli_prepare($conn, "SELECT id, gesamt, status, created_at FROM orders WHERE user_id = ? ORDER BY created_at DESC, id DESC");
+    mysqli_stmt_bind_param($ostmt, "i", $userId);
+    mysqli_stmt_execute($ostmt);
+    $ores = mysqli_stmt_get_result($ostmt);
+
+    $istmt = mysqli_prepare($conn, "SELECT p.name, oi.menge, oi.einzelpreis FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = ?");
+    $orders = [];
+    while ($o = mysqli_fetch_assoc($ores)) {
+        $orderId = (int)$o['id'];
+        mysqli_stmt_bind_param($istmt, "i", $orderId);
+        mysqli_stmt_execute($istmt);
+        $ires = mysqli_stmt_get_result($istmt);
+
+        $items = [];
+        while ($it = mysqli_fetch_assoc($ires)) {
+            $items[] = ['name' => $it['name'], 'menge' => (int)$it['menge'], 'einzelpreis' => (float)$it['einzelpreis']];
+        }
+
+        $orders[] = [
+            'id' => $orderId,
+            'gesamt' => (float)$o['gesamt'],
+            'status' => $o['status'],
+            'created_at' => $o['created_at'],
+            'items' => $items
+        ];
+    }
+
+    echo json_encode(['success' => true, 'orders' => $orders]);
+    exit;
+}
+
+// Rechnungsdaten von eigenen Bestellungen
+if ($action === 'getInvoice') {
+    if (!isset($_SESSION['user_id'])) {
+        echo json_encode(['success' => false, 'message' => 'Nicht eingeloggt.']);
+        exit;
+    }
+    $userId = (int)$_SESSION['user_id'];
+    $orderId = (int)($_GET['order_id'] ?? 0);
+
+    // Check ob bestellung zum user gehört
+    $ostmt = mysqli_prepare($conn, "SELECT id, gesamt, created_at FROM orders WHERE id = ? AND user_id = ?");
+    mysqli_stmt_bind_param($ostmt, "ii", $orderId, $userId);
+    mysqli_stmt_execute($ostmt);
+    $order = mysqli_fetch_assoc(mysqli_stmt_get_result($ostmt));
+    if (!$order) {
+        echo json_encode(['success' => false, 'message' => 'Bestellung nicht gefunden.']);
+        exit;
+    }
+
+    // Kundendaten
+    $ustmt = mysqli_prepare($conn, "SELECT anrede, vorname, nachname FROM users WHERE id = ?");
+    mysqli_stmt_bind_param($ustmt, "i", $userId);
+    mysqli_stmt_execute($ustmt);
+    $kunde = mysqli_fetch_assoc(mysqli_stmt_get_result($ustmt));
+
+    // Lieferadresse
+    $astmt = mysqli_prepare($conn, "SELECT strasse, plz, ort FROM addresses WHERE user_id = ? AND address_type = 'shipping' ORDER BY is_default DESC, id ASC LIMIT 1");
+    mysqli_stmt_bind_param($astmt, "i", $userId);
+    mysqli_stmt_execute($astmt);
+    $adresse = mysqli_fetch_assoc(mysqli_stmt_get_result($astmt));
+
+    // Positionen
+    $istmt = mysqli_prepare($conn, "SELECT p.name, oi.menge, oi.einzelpreis FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = ?");
+    mysqli_stmt_bind_param($istmt, "i", $orderId);
+    mysqli_stmt_execute($istmt);
+    $ires = mysqli_stmt_get_result($istmt);
+    $items = [];
+    while ($it = mysqli_fetch_assoc($ires)) {
+        $items[] = ['name' => $it['name'], 'menge' => (int)$it['menge'], 'einzelpreis' => (float)$it['einzelpreis']];
+    }
+
+    echo json_encode([
+        'success' => true,
+        'order' => ['id' => (int)$order['id'], 'gesamt' => (float)$order['gesamt'], 'created_at' => $order['created_at']],
+        'kunde' => $kunde,
+        'adresse' => $adresse,
+        'items' => $items
+    ]);
+    exit;
+}
+
 echo json_encode(['success' => false, 'message' => 'Ungültige Aktion']);

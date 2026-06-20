@@ -78,6 +78,12 @@
             </form>
         </div>
     </div>
+
+    <!-- Bestellungen  -->
+    <div id="ordersSection" class="mt-5 d-none">
+        <h3 class="mb-3">Meine Bestellungen</h3>
+        <div id="ordersContent"></div>
+    </div>
 </main>
 
 <div id="footer"></div>
@@ -94,11 +100,18 @@
 
 <script>
     const AUTH_URL = "/eventavoa/backend/logic/authHandler.php";
+    const ORDER_URL = "/eventavoa/backend/logic/orderHandler.php";
 
     function showMessage(text, success) {
         const el = document.getElementById("kontoMessage");
         el.className = "alert " + (success ? "alert-success" : "alert-danger");
         el.textContent = text;
+    }
+
+    // "2026-06-20 ..." -> "20. 06. 2026"
+    function formatDate(dateStr) {
+        const d = dateStr.substring(0, 10).split("-");
+        return d[2] + ". " + d[1] + ". " + d[0];
     }
 
     // Profildaten laden und ins Formular füllen
@@ -119,6 +132,7 @@
             document.getElementById("plz").value = u.plz || "";
             document.getElementById("ort").value = u.ort || "";
             document.getElementById("profileCard").classList.remove("d-none");
+            loadOrders();
         });
 
     // Geänderte Daten speichern
@@ -145,6 +159,47 @@
                     showMessage(res.message, false);
                 }
             });
+    }
+
+    // Eigene Bestellungen laden und anzeigen
+    function loadOrders() {
+        fetch(ORDER_URL + "?action=getOrders", { cache: "no-store" })
+            .then(r => r.json())
+            .then(res => {
+                if (!res.success) {
+                    return;
+                }
+                document.getElementById("ordersSection").classList.remove("d-none");
+
+                if (res.orders.length === 0) {
+                    document.getElementById("ordersContent").innerHTML =
+                        '<p class="text-muted">Noch keine Bestellungen.</p>';
+                    return;
+                }
+
+                let html = "";
+                res.orders.forEach(o => {
+                    const datum = formatDate(o.created_at);
+                    const positionen = o.items.map(it => `${it.menge}× ${it.name}`).join(", ");
+                    html += `
+                        <div class="card mb-3">
+                            <div class="card-body d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">Bestellung Nr. ${o.id}</h6>
+                                    <small class="text-muted">${datum} · ${o.gesamt.toFixed(2)} €</small>
+                                    <div class="small mt-1">${positionen}</div>
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary" onclick="openInvoice(${o.id})">Rechnung anzeigen</button>
+                            </div>
+                        </div>`;
+                });
+                document.getElementById("ordersContent").innerHTML = html;
+            });
+    }
+
+    // Rechnung in neuem Fenster öffnen
+    function openInvoice(orderId) {
+        window.open("/eventavoa/frontend/sites/rechnung.html?order=" + orderId, "_blank");
     }
 </script>
 
