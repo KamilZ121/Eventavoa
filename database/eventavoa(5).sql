@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Erstellungszeit: 21. Apr 2026 um 12:42
+-- Erstellungszeit: 21. Jun 2026 um 21:17
 -- Server-Version: 10.4.32-MariaDB
 -- PHP-Version: 8.2.12
 
@@ -45,8 +45,10 @@ CREATE TABLE `addresses` (
 --
 
 INSERT INTO `addresses` (`id`, `user_id`, `address_type`, `strasse`, `hausnummer`, `plz`, `ort`, `land`, `is_default`, `created_at`) VALUES
-(1, 1, 'shipping', 'Industriestraße', '4', '1220', 'Wien', 'Österreich', 1, '2026-04-21 10:24:16'),
-(2, 1, 'billing', 'Höchstädtplatz', '7', '1200', 'Wien', 'Österreich', 1, '2026-04-21 10:28:50');
+(3, 2, 'billing', 'Höchstädtplatz', '7', '1200', 'Wien', 'Österreich', 1, '2026-06-21 18:38:27'),
+(4, 2, 'shipping', 'Industriestraße', '4', '1220', 'Wien', 'Österreich', 1, '2026-06-21 18:38:27'),
+(5, 3, 'billing', 'Höchstädtplatz 7', NULL, '1100', 'Wien', 'Österreich', 1, '2026-06-21 18:59:16'),
+(6, 4, 'billing', 'Winarskistrasse 1', NULL, '1200', 'Wien', 'Österreich', 1, '2026-06-21 19:05:44');
 
 -- --------------------------------------------------------
 
@@ -73,6 +75,32 @@ INSERT INTO `categories` (`id`, `name`, `slug`) VALUES
 -- --------------------------------------------------------
 
 --
+-- Tabellenstruktur für Tabelle `payment_methods`
+--
+
+CREATE TABLE `payment_methods` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `user_id` int(10) UNSIGNED NOT NULL,
+  `payment_type` enum('rechnung','paypal','kreditkarte') NOT NULL,
+  `payment_identifier` varchar(255) DEFAULT NULL,
+  `is_default` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Daten für Tabelle `payment_methods`
+--
+
+INSERT INTO `payment_methods` (`id`, `user_id`, `payment_type`, `payment_identifier`, `is_default`, `created_at`) VALUES
+(1, 2, 'paypal', 'admin@eventavoa.at', 1, '2026-06-21 18:34:05'),
+(2, 2, 'kreditkarte', '**** **** **** 1234', 0, '2026-06-21 18:34:05'),
+(5, 2, 'rechnung', NULL, 0, '2026-06-21 18:35:38'),
+(6, 3, 'rechnung', NULL, 1, '2026-06-21 18:59:16'),
+(7, 4, 'paypal', 'max@frau.at', 1, '2026-06-21 19:05:44');
+
+-- --------------------------------------------------------
+
+--
 -- Tabellenstruktur für Tabelle `products`
 --
 
@@ -95,9 +123,9 @@ CREATE TABLE `products` (
 --
 
 INSERT INTO `products` (`id`, `category_id`, `sku`, `name`, `slug`, `description`, `price`, `currency`, `stock_quantity`, `is_active`, `created_at`) VALUES
-(1, 1, 'LGT-001', 'LED PAR Scheinwerfer', 'led-par', 'LED PAR für Bühne.', 129.90, 'EUR', 15, 1, '2026-04-21 10:24:16'),
-(2, 2, 'AUD-001', 'PA Lautsprecher', 'pa-speaker', 'Aktiver Lautsprecher.', 289.00, 'EUR', 10, 1, '2026-04-21 10:24:16'),
-(3, 4, 'ACC-001', 'XLR Kabel', 'xlr-kabel', 'Audiokabel XLR, 10 Meter', 19.90, 'EUR', 50, 1, '2026-04-21 10:24:16');
+(1, 1, 'LGT-001', 'LED PAR Scheinwerfer', 'led-par', 'LED PAR für Bühne.', 129.90, 'EUR', 15, 1, '2026-06-21 18:14:22'),
+(2, 2, 'AUD-001', 'PA Lautsprecher', 'pa-speaker', 'Aktiver Lautsprecher.', 289.00, 'EUR', 10, 1, '2026-06-21 18:14:22'),
+(3, 4, 'ACC-001', 'XLR Kabel', 'xlr-kabel', 'Audiokabel XLR, 10 Meter', 19.90, 'EUR', 50, 1, '2026-06-21 18:14:22');
 
 -- --------------------------------------------------------
 
@@ -120,9 +148,9 @@ CREATE TABLE `product_images` (
 --
 
 INSERT INTO `product_images` (`id`, `product_id`, `image_path`, `alt_text`, `sort_order`, `is_primary`, `created_at`) VALUES
-(1, 1, 'assets/products/led-par.jpg', 'LED PAR', 0, 1, '2026-04-21 10:24:16'),
-(2, 2, 'assets/products/pa-speaker.jpg', 'PA Lautsprecher', 0, 1, '2026-04-21 10:24:16'),
-(3, 3, 'assets/products/xlr-kabel.jpg', 'XLR Kabel', 0, 1, '2026-04-21 10:24:16');
+(1, 1, 'assets/products/led-par.jpg', 'LED PAR', 0, 1, '2026-06-21 18:14:22'),
+(2, 2, 'assets/products/pa-speaker.jpg', 'PA Lautsprecher', 0, 1, '2026-06-21 18:14:22'),
+(3, 3, 'assets/products/xlr-kabel.jpg', 'XLR Kabel', 0, 1, '2026-06-21 18:14:22');
 
 -- --------------------------------------------------------
 
@@ -148,7 +176,9 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `anrede`, `vorname`, `nachname`, `email`, `benutzername`, `passwort_hash`, `rolle`, `aktiv`, `created_at`) VALUES
-(1, 'Herr', 'Admin', 'Eventavoa', 'admin@eventavoa.at', 'admin', '$2y$10$RjGuSSxKpW28kkowtQcpt.y6cuqKB3lRcXmzMnu3xJJgsgZYmy3qC', 'admin', 1, '2026-04-21 10:24:16');
+(2, 'Herr', 'Admin', 'Eventavoa', 'admin@eventavoa.at', 'admin', '$2y$10$TA6mmSmNTEP9e5pvPuZWmetJbSpV1PoNinAeWC40Pud3Mv8yvz2bi', 'admin', 1, '2026-06-21 18:26:45'),
+(3, 'Herr', 'user', 'student', 'student@technikum-wien.at', 'student', '$2y$10$XdZQ/ih5hn7axIrLsDJIW.78z5lwZp/VntTFFZmXaI.tsOkmSgkl2', 'user', 1, '2026-06-21 18:59:16'),
+(4, 'Herr', 'Max', 'Musterfrau', 'max@frau.at', 'Maxi', '$2y$10$TA6mmSmNTEP9e5pvPuZWmetJbSpV1PoNinAeWC40Pud3Mv8yvz2bi', 'user', 1, '2026-06-21 19:05:44');
 
 --
 -- Indizes der exportierten Tabellen
@@ -167,6 +197,13 @@ ALTER TABLE `addresses`
 ALTER TABLE `categories`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `uq_categories_slug` (`slug`);
+
+--
+-- Indizes für die Tabelle `payment_methods`
+--
+ALTER TABLE `payment_methods`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_payment_methods_user` (`user_id`);
 
 --
 -- Indizes für die Tabelle `products`
@@ -200,13 +237,19 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT für Tabelle `addresses`
 --
 ALTER TABLE `addresses`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT für Tabelle `categories`
 --
 ALTER TABLE `categories`
   MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT für Tabelle `payment_methods`
+--
+ALTER TABLE `payment_methods`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT für Tabelle `products`
@@ -224,7 +267,7 @@ ALTER TABLE `product_images`
 -- AUTO_INCREMENT für Tabelle `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- Constraints der exportierten Tabellen
@@ -235,6 +278,12 @@ ALTER TABLE `users`
 --
 ALTER TABLE `addresses`
   ADD CONSTRAINT `fk_addresses_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints der Tabelle `payment_methods`
+--
+ALTER TABLE `payment_methods`
+  ADD CONSTRAINT `fk_payment_methods_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints der Tabelle `products`
