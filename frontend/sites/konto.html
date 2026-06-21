@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eventavoa - Mein Konto</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/eventavoa/frontend/css/style.css">
+</head>
+<body class="d-flex flex-column" style="min-height: 100vh;">
+
+<div id="header"></div>
+
+<main class="container my-5 flex-grow-1" style="max-width: 600px;">
+    <h2 class="mb-4">Mein Konto</h2>
+
+    <!-- Meldung -->
+    <div id="kontoMessage" class="alert d-none" role="alert"></div>
+
+    <!-- Nicht eingeloggt -->
+    <div id="notLoggedIn" class="alert alert-warning d-none">
+        Bitte zuerst <a href="/eventavoa/frontend/sites/login.html">einloggen</a>, um Ihre Daten zu sehen.
+    </div>
+
+    <!-- Bearbeitung -->
+    <div id="profileCard" class="card d-none">
+        <div class="card-body">
+            <form onsubmit="saveProfile(); return false;">
+                <div class="mb-3">
+                    <label class="form-label">Anrede</label>
+                    <select id="anrede" class="form-select">
+                        <option value="">-- waehlen --</option>
+                        <option value="Herr">Herr</option>
+                        <option value="Frau">Frau</option>
+                    </select>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Vorname</label>
+                        <input type="text" id="vorname" class="form-control" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Nachname</label>
+                        <input type="text" id="nachname" class="form-control" required>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">E-Mail</label>
+                    <input type="email" id="email" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Benutzername</label>
+                    <input type="text" id="benutzername" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Adresse</label>
+                    <input type="text" id="adresse" class="form-control" required>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">PLZ</label>
+                        <input type="text" id="plz" class="form-control" required>
+                    </div>
+                    <div class="col-md-8 mb-3">
+                        <label class="form-label">Ort</label>
+                        <input type="text" id="ort" class="form-control" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">Speichern</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Zahlungsmöglichkeiten -->
+    <div id="paymentSection" class="mt-5 d-none">
+        <h3 class="mb-3">Zahlungsmöglichkeiten</h3>
+        <div id="paymentList" class="mb-3"></div>
+        <div class="card">
+            <div class="card-body">
+                <h6 class="mb-3">Neue Zahlungsmöglichkeit</h6>
+                <form onsubmit="addPayment(); return false;">
+                    <div class="mb-3">
+                        <label class="form-label">Typ</label>
+                        <select id="zahl_typ" class="form-select" required>
+                            <option value="Kreditkarte">Kreditkarte</option>
+                            <option value="Bankeinzug">Bankeinzug</option>
+                            <option value="PayPal">PayPal</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Inhaber</label>
+                        <input type="text" id="zahl_inhaber" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" id="nummerLabel">Kartennummer</label>
+                        <input type="text" id="zahl_nummer" class="form-control" placeholder="XXXX-XXXX-XXXX-XXXX" required>
+                    </div>
+                    <div id="pruefzifferGroup">
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label class="form-label">Gültig bis</label>
+                                <input type="text" id="zahl_gueltig" class="form-control" placeholder="MM/JJ" maxlength="5">
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label class="form-label">Prüfziffer (CVV)</label>
+                                <input type="text" id="zahl_pruefziffer" class="form-control" placeholder="XXX" maxlength="3">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Aktuelles Passwort (zur Bestätigung)</label>
+                        <input type="password" id="zahl_passwort" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Hinzufügen</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bestellungen  -->
+    <div id="ordersSection" class="mt-5 d-none">
+        <h3 class="mb-3">Meine Bestellungen</h3>
+        <div id="ordersContent"></div>
+    </div>
+</main>
+
+<!-- Passwort bein ändern von Stammdaten -->
+<div class="modal fade" id="passwordModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body">
+                <p class="mb-2">Bitte geben Sie Ihr Passwort ein:</p>
+                <input type="password" id="modalPasswort" class="form-control" autocomplete="current-password">
+                <div id="modalError" class="text-danger small mt-2"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                <button type="button" class="btn btn-primary" onclick="confirmSave()">Bestätigen</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="footer"></div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script>
+    $(document).ready(function() {
+        // Warenkorb counter aktualisieren
+        $("#header").load("/eventavoa/frontend/sites/header.html", function () {
+            fetch("/eventavoa/backend/logic/cartHandler.php?action=getCartCount", { cache: "no-store" })
+                .then(r => r.json())
+                .then(res => {
+                    document.getElementById("cartCount").textContent = res.count;
+                });
+        });
+        $("#footer").load("/eventavoa/frontend/sites/footer.html");
+    });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    const AUTH_URL = "/eventavoa/backend/logic/authHandler.php";
+    const ORDER_URL = "/eventavoa/backend/logic/orderHandler.php";
+    const PAYMENT_URL = "/eventavoa/backend/logic/paymentHandler.php";
+
+    function showMessage(text, success) {
+        const el = document.getElementById("kontoMessage");
+        el.className = "alert " + (success ? "alert-success" : "alert-danger");
+        el.textContent = text;
+    }
+
+    // "2026-06-20 ..." -> "20. 06. 2026"
+    function formatDate(dateStr) {
+        const d = dateStr.substring(0, 10).split("-");
+        return d[2] + ". " + d[1] + ". " + d[0];
+    }
+
+    // Profildaten laden und ins Formular füllen
+    fetch(AUTH_URL + "?action=getProfile", { cache: "no-store" })
+        .then(r => r.json())
+        .then(res => {
+            if (!res.success) {
+                document.getElementById("notLoggedIn").classList.remove("d-none");
+                return;
+            }
+            const u = res.user;
+            document.getElementById("anrede").value = u.anrede || "";
+            document.getElementById("vorname").value = u.vorname;
+            document.getElementById("nachname").value = u.nachname;
+            document.getElementById("email").value = u.email;
+            document.getElementById("benutzername").value = u.benutzername;
+            document.getElementById("adresse").value = u.adresse || "";
+            document.getElementById("plz").value = u.plz || "";
+            document.getElementById("ort").value = u.ort || "";
+            document.getElementById("profileCard").classList.remove("d-none");
+            loadPaymentMethods();
+            loadOrders();
+        });
+
+    let passwordModal;
+
+    // Passwort abfragen wenn man speichern klickt
+    function saveProfile() {
+        document.getElementById("modalPasswort").value = "";
+        document.getElementById("modalError").textContent = "";
+        if (!passwordModal) {
+            passwordModal = new bootstrap.Modal(document.getElementById("passwordModal"));
+        }
+        passwordModal.show();
+    }
+
+    // Daten tatsächlich speichern
+    function confirmSave() {
+        const passwort = document.getElementById("modalPasswort").value;
+        if (!passwort) {
+            document.getElementById("modalError").textContent = "Bitte Passwort eingeben.";
+            return;
+        }
+
+        const data = new FormData();
+        data.append("action", "updateProfile");
+        data.append("anrede", document.getElementById("anrede").value);
+        data.append("vorname", document.getElementById("vorname").value);
+        data.append("nachname", document.getElementById("nachname").value);
+        data.append("email", document.getElementById("email").value);
+        data.append("benutzername", document.getElementById("benutzername").value);
+        data.append("adresse", document.getElementById("adresse").value);
+        data.append("plz", document.getElementById("plz").value);
+        data.append("ort", document.getElementById("ort").value);
+        data.append("passwort", passwort);
+
+        fetch(AUTH_URL, { method: "POST", body: data })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    passwordModal.hide();
+                    showMessage("Daten erfolgreich gespeichert.", true);
+                } else {
+                    // Fehler im Popup anzeigen
+                    document.getElementById("modalError").textContent = res.message;
+                }
+            });
+    }
+
+    // Zahlungsmöglichkeiten anzeigen
+    function loadPaymentMethods() {
+        fetch(PAYMENT_URL + "?action=getPaymentMethods", { cache: "no-store" })
+            .then(r => r.json())
+            .then(res => {
+                if (!res.success) {
+                    return;
+                }
+                document.getElementById("paymentSection").classList.remove("d-none");
+
+                if (res.methods.length === 0) {
+                    document.getElementById("paymentList").innerHTML =
+                        '<p class="text-muted">Noch keine Zahlungsmöglichkeit hinterlegt.</p>';
+                    return;
+                }
+
+                let html = '<ul class="list-group">';
+                res.methods.forEach(m => {
+                    html += `
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>${m.typ} – ${m.inhaber} – ${m.nummer_maskiert}</span>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deletePayment(${m.id})">Entfernen</button>
+                        </li>`;
+                });
+                html += '</ul>';
+                document.getElementById("paymentList").innerHTML = html;
+            });
+    }
+
+    // Platzhalter ja nach Typ anpassen
+    function updatePaymentForm() {
+        const typ = document.getElementById("zahl_typ").value;
+        const nummer = document.getElementById("zahl_nummer");
+        const label = document.getElementById("nummerLabel");
+        const pruefGroup = document.getElementById("pruefzifferGroup");
+
+        nummer.value = ""; // beim Typwechsel zurücksetzen (anderes Format)
+
+        if (typ === "Kreditkarte") {
+            label.textContent = "Kartennummer";
+            nummer.placeholder = "XXXX-XXXX-XXXX-XXXX";
+            pruefGroup.style.display = "block";
+        } else if (typ === "Bankeinzug") {
+            label.textContent = "IBAN";
+            nummer.placeholder = "ATXX XXXX XXXX XXXX XXXX";
+            pruefGroup.style.display = "none";
+        } else {
+            label.textContent = "PayPal-E-Mail";
+            nummer.placeholder = "name@beispiel.at";
+            pruefGroup.style.display = "none";
+        }
+    }
+    document.getElementById("zahl_typ").addEventListener("change", updatePaymentForm);
+    updatePaymentForm();
+
+    // Neue Zahlungsmöglichkeit hinzufügen
+    function addPayment() {
+        const typ = document.getElementById("zahl_typ").value;
+        const nummer = document.getElementById("zahl_nummer").value.trim();
+        const nummerClean = nummer.replace(/[\s-]/g, "");
+
+        // Format prüfen
+        if (typ === "Kreditkarte" && !/^\d{16}$/.test(nummerClean)) {
+            alert("Die Kartennummer muss aus 16 Ziffern bestehen.");
+            return;
+        }
+        if (typ === "PayPal" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nummer)) {
+            alert("Bitte eine gültige E-Mail Adresse angeben.");
+            return;
+        }
+        if (typ === "Bankeinzug" && !/^AT\d{18}$/.test(nummerClean.toUpperCase())) {
+            alert("Bitte eine gültige IBAN angeben.");
+            return;
+        }
+        const pruefziffer = document.getElementById("zahl_pruefziffer").value.trim();
+        const gueltig = document.getElementById("zahl_gueltig").value.trim();
+        if (typ === "Kreditkarte" && !/^\d{3}$/.test(pruefziffer)) {
+            alert("Die Prüfziffer muss aus 3 Ziffern bestehen.");
+            return;
+        }
+        if (typ === "Kreditkarte" && !/^(0[1-9]|1[0-2])\/\d{2}$/.test(gueltig)) {
+            alert("Bitte ein gültiges Datum angeben.");
+            return;
+        }
+
+        const data = new FormData();
+        data.append("action", "addPaymentMethod");
+        data.append("typ", document.getElementById("zahl_typ").value);
+        data.append("inhaber", document.getElementById("zahl_inhaber").value);
+        data.append("nummer", document.getElementById("zahl_nummer").value);
+        data.append("pruefziffer", pruefziffer);
+        data.append("gueltig_bis", gueltig);
+        data.append("passwort", document.getElementById("zahl_passwort").value);
+
+        fetch(PAYMENT_URL, { method: "POST", body: data })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    document.getElementById("zahl_inhaber").value = "";
+                    document.getElementById("zahl_nummer").value = "";
+                    document.getElementById("zahl_pruefziffer").value = "";
+                    document.getElementById("zahl_gueltig").value = "";
+                    document.getElementById("zahl_passwort").value = "";
+                    loadPaymentMethods();
+                } else {
+                    alert(res.message);
+                }
+            });
+    }
+
+    // Zahlungsmöglichkeit löschen
+    function deletePayment(id) {
+        const data = new FormData();
+        data.append("action", "deletePaymentMethod");
+        data.append("id", id);
+
+        fetch(PAYMENT_URL, { method: "POST", body: data })
+            .then(r => r.json())
+            .then(() => loadPaymentMethods());
+    }
+
+    // Eigene Bestellungen laden und anzeigen
+    function loadOrders() {
+        fetch(ORDER_URL + "?action=getOrders", { cache: "no-store" })
+            .then(r => r.json())
+            .then(res => {
+                if (!res.success) {
+                    return;
+                }
+                document.getElementById("ordersSection").classList.remove("d-none");
+
+                if (res.orders.length === 0) {
+                    document.getElementById("ordersContent").innerHTML =
+                        '<p class="text-muted">Noch keine Bestellungen.</p>';
+                    return;
+                }
+
+                let html = "";
+                res.orders.forEach(o => {
+                    const datum = formatDate(o.created_at);
+                    const positionen = o.items.map(it => `${it.menge}× ${it.name}`).join(", ");
+                    html += `
+                        <div class="card mb-3">
+                            <div class="card-body d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">Bestellung Nr. ${o.id}</h6>
+                                    <small class="text-muted">${datum} · ${o.gesamt.toFixed(2)} €</small>
+                                    <div class="small mt-1">${positionen}</div>
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary" onclick="openInvoice(${o.id})">Rechnung anzeigen</button>
+                            </div>
+                        </div>`;
+                });
+                document.getElementById("ordersContent").innerHTML = html;
+            });
+    }
+
+    // Rechnung in neuem Fenster öffnen
+    function openInvoice(orderId) {
+        window.open("/eventavoa/frontend/sites/rechnung.html?order=" + orderId, "_blank");
+    }
+</script>
+
+</body>
+</html>
