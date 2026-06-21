@@ -56,19 +56,18 @@ INSERT INTO `addresses` (`id`, `user_id`, `address_type`, `strasse`, `hausnummer
 
 CREATE TABLE `categories` (
   `id` int(10) UNSIGNED NOT NULL,
-  `name` varchar(100) NOT NULL,
-  `slug` varchar(120) NOT NULL
+  `name` varchar(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Daten für Tabelle `categories`
 --
 
-INSERT INTO `categories` (`id`, `name`, `slug`) VALUES
-(1, 'Lichttechnik', 'lichttechnik'),
-(2, 'Tontechnik', 'tontechnik'),
-(3, 'Bühnentechnik', 'buehnentechnik'),
-(4, 'Zubehör', 'zubehoer');
+INSERT INTO `categories` (`id`, `name`) VALUES
+(1, 'Lichttechnik'),
+(2, 'Tontechnik'),
+(3, 'Bühnentechnik'),
+(4, 'Zubehör');
 
 -- --------------------------------------------------------
 
@@ -79,9 +78,7 @@ INSERT INTO `categories` (`id`, `name`, `slug`) VALUES
 CREATE TABLE `products` (
   `id` int(10) UNSIGNED NOT NULL,
   `category_id` int(10) UNSIGNED NOT NULL,
-  `sku` varchar(50) NOT NULL,
   `name` varchar(150) NOT NULL,
-  `slug` varchar(180) NOT NULL,
   `description` text NOT NULL,
   `price` decimal(10,2) NOT NULL,
   `currency` char(3) NOT NULL DEFAULT 'EUR',
@@ -93,10 +90,10 @@ CREATE TABLE `products` (
 -- Daten für Tabelle `products`
 --
 
-INSERT INTO `products` (`id`, `category_id`, `sku`, `name`, `slug`, `description`, `price`, `currency`, `is_active`, `created_at`) VALUES
-(1, 1, 'LGT-001', 'LED PAR Scheinwerfer', 'led-par', 'LED PAR für Bühne.', 129.90, 'EUR', 1, '2026-04-21 10:24:16'),
-(2, 2, 'AUD-001', 'PA Lautsprecher', 'pa-speaker', 'Aktiver Lautsprecher.', 289.00, 'EUR', 1, '2026-04-21 10:24:16'),
-(3, 4, 'ACC-001', 'XLR Kabel', 'xlr-kabel', 'Audiokabel XLR, 10 Meter', 19.90, 'EUR', 1, '2026-04-21 10:24:16');
+INSERT INTO `products` (`id`, `category_id`, `name`, `description`, `price`, `currency`, `is_active`, `created_at`) VALUES
+(1, 1, 'LED PAR Scheinwerfer', 'LED PAR für Bühne.', 129.90, 'EUR', 1, '2026-04-21 10:24:16'),
+(2, 2, 'PA Lautsprecher', 'Aktiver Lautsprecher.', 289.00, 'EUR', 1, '2026-04-21 10:24:16'),
+(3, 4, 'XLR Kabel', 'Audiokabel XLR, 10 Meter', 19.90, 'EUR', 1, '2026-04-21 10:24:16');
 
 -- --------------------------------------------------------
 
@@ -165,16 +162,13 @@ ALTER TABLE `addresses`
 -- Indizes für die Tabelle `categories`
 --
 ALTER TABLE `categories`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `uq_categories_slug` (`slug`);
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indizes für die Tabelle `products`
 --
 ALTER TABLE `products`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `uq_products_sku` (`sku`),
-  ADD UNIQUE KEY `uq_products_slug` (`slug`),
   ADD KEY `idx_products_category_id` (`category_id`);
 
 --

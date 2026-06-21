@@ -8,7 +8,7 @@ $conn = DBAccess::getInstance()->getConnection();
 $action = $_GET['action'] ?? '';
 
 if ($action === 'getCategories') {
-    $sql = "SELECT id, name, slug FROM categories ORDER BY name";
+    $sql = "SELECT id, name FROM categories ORDER BY name";
     $result = mysqli_query($conn, $sql);
 
     $categories = [];
@@ -28,9 +28,7 @@ if ($action === 'getProducts') {
         SELECT
             p.id,
             p.category_id,
-            p.sku,
             p.name,
-            p.slug,
             p.description,
             p.price,
             p.currency,
