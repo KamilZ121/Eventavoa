@@ -37,7 +37,7 @@ function loadCart() {
         url: CART_URL,
         method: "GET",
         dataType: "json",
-        data: { action: "getCart" },
+        data: { method: "getCart" },
         success: function (cart) {
             renderCart(cart);
             $("#cartCount").text(cart.count);
@@ -51,7 +51,7 @@ function updateQty(productId, qty) {
         url: CART_URL,
         method: "POST",
         dataType: "json",
-        data: { action: "updateCart", product_id: productId, qty: qty },
+        data: { method: "updateCart", product_id: productId, qty: qty },
         success: function (cart) {
             renderCart(cart);
             $("#cartCount").text(cart.count);
@@ -65,7 +65,7 @@ function removeFromCart(productId) {
         url: CART_URL,
         method: "POST",
         dataType: "json",
-        data: { action: "removeFromCart", product_id: productId },
+        data: { method: "removeFromCart", product_id: productId },
         success: function (cart) {
             renderCart(cart);
             $("#cartCount").text(cart.count);
@@ -76,7 +76,7 @@ function removeFromCart(productId) {
 // Bestellen
 function placeOrder() {
     const paymentSelect = document.getElementById("paymentSelect");
-    const data = { action: "placeOrder" };
+    const data = { method: "placeOrder" };
     if (paymentSelect) {
         data.payment_method_id = paymentSelect.value;
     }
@@ -146,14 +146,20 @@ function renderCart(cart) {
 
 // Zahlungsmöglichkeiten für die Auswahl beim Bestellen laden
 function loadPaymentChoices() {
-    fetch(PAYMENT_URL + "?action=getPaymentMethods", { cache: "no-store" })
-        .then(r => r.json())
-        .then(res => {
-            // Nicht eingeloggt -> keine Auswahl
+    $.ajax({
+        url: PAYMENT_URL,
+        method: "GET",
+        dataType: "json",
+        data: {
+            method: "getPaymentMethods"
+        },
+        success: function (res) {
             if (!res.success) {
                 return;
             }
+
             const el = document.getElementById("paymentChoice");
+
             if (!el) {
                 return;
             }
@@ -168,13 +174,16 @@ function loadPaymentChoices() {
             }
 
             let options = "";
+
             res.methods.forEach(m => {
-                options += `<option value="${m.id}">${m.typ} – ${m.nummer_maskiert}</option>`;
+                options += `<option value="${m.id}">${m.payment_type} – ${m.payment_identifier ?? ""}</option>`;
             });
+
             el.innerHTML = `
                 <label class="form-label">Zahlungsart</label>
                 <select id="paymentSelect" class="form-select">${options}</select>`;
-        });
+        }
+    });
 }
 
 // Counter im Header
@@ -183,7 +192,7 @@ function updateCartBadge() {
         url: CART_URL,
         method: "GET",
         dataType: "json",
-        data: { action: "getCartCount" },
+        data: { method: "getCartCount" },
         success: function (response) {
             $("#cartCount").text(response.count);
         }
