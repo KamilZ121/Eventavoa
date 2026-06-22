@@ -1,26 +1,44 @@
 :root {
-    --eventavoa-blue: #3157a4;
-    --eventavoa-dark: #172033;
+    --eventavoa-navy: #03045e;
+    --eventavoa-dark: #0077b6;
+    --eventavoa-blue: #00b4d8;
+    --eventavoa-light: #90e0ef;
+    --eventavoa-pale: #caf0f8;
 }
 
 body {
-    background: #f7f8fb;
+    background: var(--eventavoa-pale);
+    color: var(--eventavoa-navy);
+}
+
+a {
     color: var(--eventavoa-dark);
 }
 
-.bg-primary,
-.btn-primary {
+a:hover {
+    color: var(--eventavoa-navy);
+}
+
+/* Nur grosse Flaechen und Schriftakzente verwenden die eigene Palette. */
+.bg-primary {
     background-color: var(--eventavoa-blue) !important;
-    border-color: var(--eventavoa-blue) !important;
+}
+
+.bg-dark {
+    background-color: var(--eventavoa-navy) !important;
+}
+
+.bg-light {
+    background-color: var(--eventavoa-light) !important;
 }
 
 .text-primary {
-    color: var(--eventavoa-blue) !important;
+    color: var(--eventavoa-dark) !important;
 }
 
 .card {
     border: 0;
-    box-shadow: 0 0.25rem 1rem rgba(23, 32, 51, 0.08);
+    box-shadow: 0 0.25rem 1rem rgba(3, 4, 94, 0.08);
 }
 
 .product-card {
@@ -29,7 +47,7 @@ body {
 
 .product-card:hover {
     transform: translateY(-0.25rem);
-    box-shadow: 0 0.75rem 1.5rem rgba(23, 32, 51, 0.14);
+    box-shadow: 0 0.75rem 1.5rem rgba(3, 4, 94, 0.14);
 }
 
 .account-page,
@@ -41,4 +59,3 @@ body {
     body { background: #fff; }
     .invoice-page #invoice { max-width: none; }
 }
-
