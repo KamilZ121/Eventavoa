@@ -159,7 +159,7 @@ function renderProducts(products) {
         products.forEach(product => {
             // Bilder laden
             const media = product.image_path
-                ? `<div class="bg-light text-center" style="height: 200px;">
+                ? `<div class="text-center" style="height: 200px;">
                        <img src="/eventavoa/frontend/${encodeURI(product.image_path)}" alt="${safeText(product.name)}" style="height: 100%; object-fit: contain;">
                    </div>`
                 : `<div class="bg-light p-5 text-center">
