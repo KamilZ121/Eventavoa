@@ -19,21 +19,14 @@ a:hover {
     color: var(--eventavoa-navy);
 }
 
-/* Nur grosse Flaechen und Schriftakzente verwenden die eigene Palette. */
-.bg-primary {
+.bg-primary,
+.btn-primary {
     background-color: var(--eventavoa-blue) !important;
-}
-
-.bg-dark {
-    background-color: var(--eventavoa-navy) !important;
-}
-
-.bg-light {
-    background-color: var(--eventavoa-light) !important;
+    border-color: var(--eventavoa-blue) !important;
 }
 
 .text-primary {
-    color: var(--eventavoa-dark) !important;
+    color: var(--eventavoa-blue) !important;
 }
 
 .card {
@@ -56,6 +49,6 @@ a:hover {
 }
 
 @media print {
-    body { background: #fff; }
+    body { background: var(--eventavoa-pale); }
     .invoice-page #invoice { max-width: none; }
 }
