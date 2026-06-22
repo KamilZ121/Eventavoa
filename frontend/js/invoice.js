@@ -1,6 +1,8 @@
 const ORDER_URL = "/eventavoa/backend/logic/orderHandler.php";
 
 $(document).ready(function () {
+    $("#header").load("/eventavoa/frontend/sites/header.html");
+    $("#footer").load("/eventavoa/frontend/sites/footer.html");
     const orderId = new URLSearchParams(window.location.search).get("order");
     $.ajax({type: "GET", url: ORDER_URL, data: {action: "getInvoice", order_id: orderId}, dataType: "json"})
         .done(showInvoice)
@@ -25,4 +27,3 @@ function showInvoice(response) {
 
 function formatDate(value) { return value.substring(0, 10).split("-").reverse().join(". "); }
 function escapeHtml(value) { return $("<div>").text(value == null ? "" : String(value)).html(); }
-

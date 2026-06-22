@@ -15,43 +15,56 @@
     <div id="kontoMessage" class="alert d-none"></div>
     <div id="notLoggedIn" class="alert alert-warning d-none">Bitte zuerst <a href="login.html">einloggen</a>.</div>
 
-    <section id="profileCard" class="card d-none mb-5">
-        <div class="card-body">
-            <h2 class="h4 mb-3">Stammdaten</h2>
-            <form id="profileForm">
-                <div class="row g-3">
-                    <div class="col-md-4"><label for="anrede" class="form-label">Anrede</label><select id="anrede" class="form-select" required><option value="">Bitte wählen</option><option>Herr</option><option>Frau</option><option>Divers</option></select></div>
-                    <div class="col-md-4"><label for="vorname" class="form-label">Vorname</label><input id="vorname" class="form-control" required></div>
-                    <div class="col-md-4"><label for="nachname" class="form-label">Nachname</label><input id="nachname" class="form-control" required></div>
-                    <div class="col-md-6"><label for="email" class="form-label">E-Mail</label><input id="email" type="email" class="form-control" required></div>
-                    <div class="col-md-6"><label for="benutzername" class="form-label">Benutzername</label><input id="benutzername" class="form-control" required></div>
-                    <div class="col-md-6"><label for="adresse" class="form-label">Adresse</label><input id="adresse" class="form-control" required></div>
-                    <div class="col-md-2"><label for="plz" class="form-label">PLZ</label><input id="plz" class="form-control" pattern="[0-9]{4}" required></div>
-                    <div class="col-md-4"><label for="ort" class="form-label">Ort</label><input id="ort" class="form-control" required></div>
-                </div>
-                <button class="btn btn-primary mt-3">Speichern</button>
-            </form>
+    <div id="accountContent" class="d-none">
+        <ul class="nav nav-tabs" id="accountTabNav" role="tablist">
+            <li class="nav-item" role="presentation"><button class="nav-link active" id="orders-tab" data-bs-toggle="tab" data-bs-target="#ordersSection" type="button" role="tab" aria-controls="ordersSection" aria-selected="true">Bestellungen</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" id="payments-tab" data-bs-toggle="tab" data-bs-target="#paymentSection" type="button" role="tab" aria-controls="paymentSection" aria-selected="false">Zahlungsmöglichkeiten</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profileCard" type="button" role="tab" aria-controls="profileCard" aria-selected="false">Stammdaten</button></li>
+        </ul>
+
+        <div class="tab-content pt-4" id="accountTabContent">
+            <section id="ordersSection" class="tab-pane fade show active" role="tabpanel" aria-labelledby="orders-tab" tabindex="0">
+                <h2 class="h4">Meine Bestellungen</h2>
+                <div id="ordersContent"></div>
+            </section>
+
+            <section id="paymentSection" class="tab-pane fade" role="tabpanel" aria-labelledby="payments-tab" tabindex="0">
+                <h2 class="h4">Zahlungsmöglichkeiten</h2>
+                <div id="paymentList" class="mb-3"></div>
+                <div class="card"><div class="card-body">
+                    <h3 class="h6">Neue Zahlungsmöglichkeit</h3>
+                    <form id="paymentForm" class="row g-3">
+                        <div class="col-md-4"><label for="zahl_typ" class="form-label">Typ</label><select id="zahl_typ" class="form-select"><option>Kreditkarte</option><option>Rechnung</option><option>PayPal</option></select></div>
+                        <div class="col-md-8"><label for="zahl_inhaber" class="form-label">Inhaber</label><input id="zahl_inhaber" class="form-control" required></div>
+                        <div class="col-md-6"><label for="zahl_nummer" id="nummerLabel" class="form-label">Kartennummer</label><input id="zahl_nummer" class="form-control" required></div>
+                        <div class="col-md-3 card-only"><label for="zahl_gueltig" class="form-label">Gültig bis</label><input id="zahl_gueltig" class="form-control" placeholder="MM/JJ"></div>
+                        <div class="col-md-3 card-only"><label for="zahl_pruefziffer" class="form-label">CVV</label><input id="zahl_pruefziffer" class="form-control" maxlength="3"></div>
+                        <div class="col-md-6"><label for="zahl_passwort" class="form-label">Aktuelles Passwort</label><input id="zahl_passwort" type="password" class="form-control" required></div>
+                        <div><button class="btn btn-primary">Hinzufügen</button></div>
+                    </form>
+                </div></div>
+            </section>
+
+            <section id="profileCard" class="tab-pane fade" role="tabpanel" aria-labelledby="profile-tab" tabindex="0">
+                <div class="card"><div class="card-body">
+                    <h2 class="h4 mb-3">Stammdaten</h2>
+                    <form id="profileForm">
+                        <div class="row g-3">
+                            <div class="col-md-4"><label for="anrede" class="form-label">Anrede</label><select id="anrede" class="form-select" required><option value="">Bitte wählen</option><option>Herr</option><option>Frau</option><option>Divers</option></select></div>
+                            <div class="col-md-4"><label for="vorname" class="form-label">Vorname</label><input id="vorname" class="form-control" required></div>
+                            <div class="col-md-4"><label for="nachname" class="form-label">Nachname</label><input id="nachname" class="form-control" required></div>
+                            <div class="col-md-6"><label for="email" class="form-label">E-Mail</label><input id="email" type="email" class="form-control" required></div>
+                            <div class="col-md-6"><label for="benutzername" class="form-label">Benutzername</label><input id="benutzername" class="form-control" required></div>
+                            <div class="col-md-6"><label for="adresse" class="form-label">Adresse</label><input id="adresse" class="form-control" required></div>
+                            <div class="col-md-2"><label for="plz" class="form-label">PLZ</label><input id="plz" class="form-control" pattern="[0-9]{4}" required></div>
+                            <div class="col-md-4"><label for="ort" class="form-label">Ort</label><input id="ort" class="form-control" required></div>
+                        </div>
+                        <button class="btn btn-primary mt-3">Speichern</button>
+                    </form>
+                </div></div>
+            </section>
         </div>
-    </section>
-
-    <section id="paymentSection" class="d-none mb-5">
-        <h2 class="h4">Zahlungsmöglichkeiten</h2>
-        <div id="paymentList" class="mb-3"></div>
-        <div class="card"><div class="card-body">
-            <h3 class="h6">Neue Zahlungsmöglichkeit</h3>
-            <form id="paymentForm" class="row g-3">
-                <div class="col-md-4"><label for="zahl_typ" class="form-label">Typ</label><select id="zahl_typ" class="form-select"><option>Kreditkarte</option><option>Rechnung</option><option>PayPal</option></select></div>
-                <div class="col-md-8"><label for="zahl_inhaber" class="form-label">Inhaber</label><input id="zahl_inhaber" class="form-control" required></div>
-                <div class="col-md-6"><label for="zahl_nummer" id="nummerLabel" class="form-label">Kartennummer</label><input id="zahl_nummer" class="form-control" required></div>
-                <div class="col-md-3 card-only"><label for="zahl_gueltig" class="form-label">Gültig bis</label><input id="zahl_gueltig" class="form-control" placeholder="MM/JJ"></div>
-                <div class="col-md-3 card-only"><label for="zahl_pruefziffer" class="form-label">CVV</label><input id="zahl_pruefziffer" class="form-control" maxlength="3"></div>
-                <div class="col-md-6"><label for="zahl_passwort" class="form-label">Aktuelles Passwort</label><input id="zahl_passwort" type="password" class="form-control" required></div>
-                <div><button class="btn btn-primary">Hinzufügen</button></div>
-            </form>
-        </div></div>
-    </section>
-
-    <section id="ordersSection" class="d-none"><h2 class="h4">Meine Bestellungen</h2><div id="ordersContent"></div></section>
+    </div>
 </main>
 
 <div class="modal fade" id="passwordModal" tabindex="-1"><div class="modal-dialog modal-sm modal-dialog-centered"><div class="modal-content">

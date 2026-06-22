@@ -23,7 +23,7 @@ function loadProfile() {
             ["anrede", "vorname", "nachname", "email", "benutzername", "adresse", "plz", "ort"].forEach(function (field) {
                 $("#" + field).val(user[field] || "");
             });
-            $("#profileCard").removeClass("d-none");
+            $("#accountContent").removeClass("d-none");
             loadPayments();
             loadOrders();
         })
@@ -52,7 +52,6 @@ function saveProfile() {
 function loadPayments() {
     $.ajax({type: "GET", url: PAYMENT_URL, data: {action: "getPaymentMethods"}, dataType: "json"})
         .done(function (response) {
-            $("#paymentSection").removeClass("d-none");
             if (!response.methods.length) { $("#paymentList").html('<p class="text-muted">Noch keine Zahlungsmöglichkeit hinterlegt.</p>'); return; }
             let html = '<div class="list-group">';
             response.methods.forEach(function (method) {
@@ -83,7 +82,6 @@ function deletePayment() {
 
 function loadOrders() {
     $.ajax({type: "GET", url: ORDER_URL, data: {action: "getOrders"}, dataType: "json"}).done(function (response) {
-        $("#ordersSection").removeClass("d-none");
         if (!response.orders.length) { $("#ordersContent").html('<p class="text-muted">Noch keine Bestellungen.</p>'); return; }
         let html = "";
         response.orders.forEach(function (order) {
