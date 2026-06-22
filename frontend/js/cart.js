@@ -99,6 +99,10 @@ function placeOrder() {
                     <div class="alert alert-success">
                         Vielen Dank! Ihre Bestellung Nr. ${res.orderId} über
                         ${res.gesamt.toFixed(2)} € wurde aufgenommen.
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a class="btn btn-primary" href="/eventavoa/index.html">Zum Shop</a>
+                        <a class="btn btn-outline-primary" href="/eventavoa/frontend/sites/rechnung.html?order=${encodeURIComponent(res.orderId)}">Zur Rechnung</a>
                     </div>`);
                 $("#cartCount").text(0);
             } else {
