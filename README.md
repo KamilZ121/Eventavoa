@@ -6,7 +6,7 @@ Webshop-Projekt für Eventtechnik (Webentwicklungsprojekt, SS 2026). Frontend un
 
 1. Repository nach `C:\xampp\htdocs\Eventavoa` legen.
 2. Apache und MySQL über XAMPP starten.
-3. Eine Datenbank namens `eventavoa` anlegen und `database/eventavoa(5).sql` in phpMyAdmin importieren.
+3. `database/eventavoa.sql` in phpMyAdmin importieren. Die Datenbank `eventavoa` wird dabei automatisch erstellt.
 4. `http://localhost/eventavoa/` öffnen.
 
 Die Datenbankverbindung befindet sich in `backend/config/dbaccess.php` und verwendet standardmäßig die lokale XAMPP-Datenbank `eventavoa` mit Benutzer `root` ohne Passwort.
