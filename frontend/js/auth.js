@@ -1,4 +1,11 @@
-const API = "/eventavoa/backend/serviceHandler.php";
+const API = "/eventavoa/backend/logic/authHandler.php";
+
+function loginTarget() {
+    const target = new URLSearchParams(window.location.search).get("redirect");
+    return target && target.startsWith("/eventavoa/") && !target.startsWith("//")
+        ? target
+        : "/eventavoa/index.html";
+}
 
 function showTab(tab) {
     $("#loginForm").toggleClass("d-none", tab !== "login");
@@ -30,20 +37,20 @@ function login() {
         url: API,
         dataType: "json",
         data: {
-            method: "login",
+            action: "login",
             benutzername: $("#login_user").val(),
             passwort: $("#login_pass").val(),
             remember: $("#remember").is(":checked") ? "1" : "0"
         },
         success: function(response) {
             if (response.success) {
-                window.location.href = "/eventavoa/index.html";
+                window.location.href = loginTarget();
             } else {
                 showMessage(response.message, false);
             }
         },
-        error: function() {
-            showMessage("Login konnte nicht durchgeführt werden.", false);
+        error: function(xhr) {
+            showMessage(xhr.responseJSON?.message || "Login konnte nicht durchgeführt werden.", false);
         }
     });
 }
@@ -68,7 +75,7 @@ function register() {
         url: API,
         dataType: "json",
         data: {
-            method: "register",
+            action: "register",
             anrede: $("#reg_anrede").val(),
             vorname: $("#reg_vorname").val(),
             nachname: $("#reg_nachname").val(),
@@ -79,7 +86,9 @@ function register() {
             benutzername: $("#reg_benutzername").val(),
             passwort: passwort,
             passwort2: passwort2,
-            payment_type: paymentType
+            payment_type: paymentType,
+            payment_owner: `${$("#reg_vorname").val()} ${$("#reg_nachname").val()}`,
+            payment_identifier: $("#reg_payment_identifier").val()
         },
         success: function(response) {
             if (response.success) {
@@ -89,8 +98,8 @@ function register() {
                 showMessage(response.message, false);
             }
         },
-        error: function() {
-            showMessage("Registrierung konnte nicht durchgeführt werden.", false);
+        error: function(xhr) {
+            showMessage(xhr.responseJSON?.message || "Registrierung konnte nicht durchgeführt werden.", false);
         }
     });
 }

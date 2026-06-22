@@ -37,7 +37,7 @@ function loadCart() {
         url: CART_URL,
         method: "GET",
         dataType: "json",
-        data: { method: "getCart" },
+        data: { action: "getCart" },
         success: function (cart) {
             renderCart(cart);
             $("#cartCount").text(cart.count);
@@ -51,7 +51,7 @@ function updateQty(productId, qty) {
         url: CART_URL,
         method: "POST",
         dataType: "json",
-        data: { method: "updateCart", product_id: productId, qty: qty },
+        data: { action: "updateCart", product_id: productId, qty: qty },
         success: function (cart) {
             renderCart(cart);
             $("#cartCount").text(cart.count);
@@ -65,7 +65,7 @@ function removeFromCart(productId) {
         url: CART_URL,
         method: "POST",
         dataType: "json",
-        data: { method: "removeFromCart", product_id: productId },
+        data: { action: "removeFromCart", product_id: productId },
         success: function (cart) {
             renderCart(cart);
             $("#cartCount").text(cart.count);
@@ -76,10 +76,11 @@ function removeFromCart(productId) {
 // Bestellen
 function placeOrder() {
     const paymentSelect = document.getElementById("paymentSelect");
-    const data = { method: "placeOrder" };
+    const data = { action: "placeOrder" };
     if (paymentSelect) {
         data.payment_method_id = paymentSelect.value;
     }
+    data.voucher_code = $("#voucherCode").val() || "";
 
     $.ajax({
         url: ORDER_URL,
@@ -103,6 +104,15 @@ function placeOrder() {
             } else {
                 alert(res.message);
             }
+        },
+        error: function (xhr) {
+            const res = xhr.responseJSON || {};
+            if (res.needsLogin) {
+                window.location.href = "/eventavoa/frontend/sites/login.html?redirect=" +
+                    encodeURIComponent("/eventavoa/frontend/sites/cart.html");
+                return;
+            }
+            alert(res.message || "Bestellung konnte nicht abgeschlossen werden.");
         }
     });
 }
@@ -151,7 +161,7 @@ function loadPaymentChoices() {
         method: "GET",
         dataType: "json",
         data: {
-            method: "getPaymentMethods"
+            action: "getPaymentMethods"
         },
         success: function (res) {
             if (!res.success) {
@@ -176,12 +186,16 @@ function loadPaymentChoices() {
             let options = "";
 
             res.methods.forEach(m => {
-                options += `<option value="${m.id}">${m.payment_type} – ${m.payment_identifier ?? ""}</option>`;
+                options += `<option value="${m.id}">${m.typ} – ${m.nummer_maskiert}</option>`;
             });
 
             el.innerHTML = `
-                <label class="form-label">Zahlungsart</label>
-                <select id="paymentSelect" class="form-select">${options}</select>`;
+                <div class="row g-3">
+                    <div class="col-md-6"><label class="form-label">Zahlungsart</label>
+                    <select id="paymentSelect" class="form-select"><option value="">Keine</option>${options}</select></div>
+                    <div class="col-md-6"><label class="form-label">Gutscheincode (optional)</label>
+                    <input id="voucherCode" class="form-control text-uppercase" maxlength="5"></div>
+                </div>`;
         }
     });
 }
@@ -192,7 +206,7 @@ function updateCartBadge() {
         url: CART_URL,
         method: "GET",
         dataType: "json",
-        data: { method: "getCartCount" },
+        data: { action: "getCartCount" },
         success: function (response) {
             $("#cartCount").text(response.count);
         }

@@ -1,2 +1,44 @@
-/* Minimal styles - Bootstrap defaults only */
+:root {
+    --eventavoa-blue: #3157a4;
+    --eventavoa-dark: #172033;
+}
+
+body {
+    background: #f7f8fb;
+    color: var(--eventavoa-dark);
+}
+
+.bg-primary,
+.btn-primary {
+    background-color: var(--eventavoa-blue) !important;
+    border-color: var(--eventavoa-blue) !important;
+}
+
+.text-primary {
+    color: var(--eventavoa-blue) !important;
+}
+
+.card {
+    border: 0;
+    box-shadow: 0 0.25rem 1rem rgba(23, 32, 51, 0.08);
+}
+
+.product-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.product-card:hover {
+    transform: translateY(-0.25rem);
+    box-shadow: 0 0.75rem 1.5rem rgba(23, 32, 51, 0.14);
+}
+
+.account-page,
+.invoice-page #invoice {
+    max-width: 760px;
+}
+
+@media print {
+    body { background: #fff; }
+    .invoice-page #invoice { max-width: none; }
+}
 

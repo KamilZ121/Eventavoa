@@ -2,7 +2,6 @@ const CART_URL = "/eventavoa/backend/logic/cartHandler.php";
 
 $(document).ready(function () {
     loadCategories();
-    loadProducts();
 
     $("#categorySelect").on("change", function () {
         loadProducts();
@@ -31,7 +30,7 @@ function addToCart(productId) {
         method: "POST",
         dataType: "json",
         data: {
-            method: "addToCart",
+            action: "addToCart",
             product_id: productId,
             qty: 1
         },
@@ -82,7 +81,7 @@ function updateCartCount(count) {
         url: CART_URL,
         method: "GET",
         dataType: "json",
-        data: { method: "getCartCount" },
+        data: { action: "getCartCount" },
         success: function (response) {
             $("#cartCount").text(response.count);
         }
@@ -95,16 +94,20 @@ function loadCategories() {
         method: "GET",
         dataType: "json",
         data: {
-            method: "getCategories"
+            action: "getCategories"
         },
-        success: function (categories) {
+        success: function (response) {
             let options = '<option value="">Alle Kategorien</option>';
 
-            categories.forEach(category => {
+            response.categories.forEach(category => {
                 options += `<option value="${category.id}">${category.name}</option>`;
             });
 
             $("#categorySelect").html(options);
+            if (response.categories.length) {
+                $("#categorySelect").val(response.categories[0].id);
+            }
+            loadProducts();
         },
         error: function () {
             alert("Kategorien konnten nicht geladen werden.");
@@ -121,11 +124,12 @@ function loadProducts() {
         method: "GET",
         dataType: "json",
         data: {
-            method: "getProducts",
+            action: "getProducts",
             category_id: categoryId,
             search: search
         },
-        success: function (products) {
+        success: function (response) {
+            const products = response.products;
             renderProducts(products);
             // "Produkt" falls es ein einzelnes ist
             const label = products.length === 1 ? " Produkt" : " Produkte";
@@ -156,20 +160,21 @@ function renderProducts(products) {
             // Bilder laden
             const media = product.image_path
                 ? `<div class="bg-light text-center" style="height: 200px;">
-                       <img src="/eventavoa/frontend/${product.image_path}" alt="${product.name}" style="height: 100%; object-fit: contain;">
+                       <img src="/eventavoa/frontend/${encodeURI(product.image_path)}" alt="${safeText(product.name)}" style="height: 100%; object-fit: contain;">
                    </div>`
                 : `<div class="bg-light p-5 text-center">
-                       <h1 class="text-primary">${product.name.charAt(0).toUpperCase()}</h1>
+                       <h1 class="text-primary">${safeText(product.name.charAt(0).toUpperCase())}</h1>
                    </div>`;
 
             // Drag n drop in Warenkorb
             html += `
                 <div class="col-md-6 col-lg-4 mb-4">
-                    <div class="card h-100" draggable="true" data-product-id="${product.id}">
+                    <div class="card product-card h-100" draggable="true" data-product-id="${product.id}">
                         ${media}
                         <div class="card-body d-flex flex-column">
-                            <h5 class="card-title">${product.name}</h5>
-                            <p class="card-text text-muted">${product.description || 'Professionelle Ausruestung'}</p>
+                            <h5 class="card-title">${safeText(product.name)}</h5>
+                            <p class="card-text text-muted">${safeText(product.description || 'Professionelle Ausrüstung')}</p>
+                            <div class="text-warning mb-2" aria-label="Bewertung ${product.rating} von 5">${renderRating(product.rating)}</div>
                             <p class="fs-5 fw-bold text-primary mt-auto mb-3">${Number(product.price).toFixed(2)} €</p>
                             <button class="btn btn-primary w-100 addToCartBtn" data-product-id="${product.id}">In den Warenkorb</button>
                         </div>
@@ -180,4 +185,13 @@ function renderProducts(products) {
     }
 
     $("#productList").html(html);
+}
+
+function renderRating(value) {
+    const rating = Math.max(0, Math.min(5, Math.round(Number(value))));
+    return "★".repeat(rating) + "☆".repeat(5 - rating);
+}
+
+function safeText(value) {
+    return $("<div>").text(value == null ? "" : String(value)).html();
 }

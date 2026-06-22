@@ -1,128 +1,72 @@
 <?php
+declare(strict_types=1);
 
-session_start();
-header("Content-Type: application/json; charset=UTF-8");
+require_once __DIR__ . '/../config/api.php';
+require_once __DIR__ . '/../config/dataHandler.php';
+bootstrapApi();
 
-require_once __DIR__ . "/../config/DBAccess.php";
+$dataHandler = new DataHandler();
+$conn = $dataHandler->getConnection();
+$action = requestAction();
+$userId = requireLogin();
 
-$conn = DBAccess::getInstance()->getConnection();
-$action = $_REQUEST['action'] ?? '';
-
-// Zahlungsmöglichkeiten auflisten
 if ($action === 'getPaymentMethods') {
-    if (!isset($_SESSION['user_id'])) {
-        echo json_encode(['success' => false, 'message' => 'Nicht eingeloggt.']);
-        exit;
-    }
-    $userId = (int)$_SESSION['user_id'];
-
-    $stmt = mysqli_prepare($conn, "SELECT id, typ, inhaber, nummer FROM zahlungsmoeglichkeiten WHERE user_id = ? ORDER BY id DESC");
-    mysqli_stmt_bind_param($stmt, "i", $userId);
-    mysqli_stmt_execute($stmt);
-    $res = mysqli_stmt_get_result($stmt);
-
+    $stmt = $conn->prepare('SELECT id, typ, inhaber, nummer FROM zahlungsmoeglichkeiten WHERE user_id = ? ORDER BY id DESC');
+    $stmt->bind_param('i', $userId);
+    $stmt->execute();
     $methods = [];
-    while ($row = mysqli_fetch_assoc($res)) {
-        // Nummer maskieren
-        $nummer = $row['nummer'];
-        $masked = strlen($nummer) > 4 ? '•••• ' . substr($nummer, -4) : $nummer;
-        $methods[] = [
-            'id' => (int)$row['id'],
-            'typ' => $row['typ'],
-            'inhaber' => $row['inhaber'],
-            'nummer_maskiert' => $masked
-        ];
+    foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $row) {
+        $value = (string) $row['nummer'];
+        $visible = mb_substr($value, -4);
+        $methods[] = ['id' => (int) $row['id'], 'typ' => $row['typ'], 'inhaber' => $row['inhaber'], 'nummer_maskiert' => '•••• ' . $visible];
     }
-
-    echo json_encode(['success' => true, 'methods' => $methods]);
-    exit;
+    respond(['success' => true, 'methods' => $methods]);
 }
 
-// Neue Zahlungsmöglichkeit hinzufügen
 if ($action === 'addPaymentMethod') {
-    if (!isset($_SESSION['user_id'])) {
-        echo json_encode(['success' => false, 'message' => 'Nicht eingeloggt.']);
-        exit;
-    }
-    $userId = (int)$_SESSION['user_id'];
-    $typ = trim($_POST['typ'] ?? '');
-    $inhaber = trim($_POST['inhaber'] ?? '');
-    $nummer = trim($_POST['nummer'] ?? '');
-    $pruefziffer = trim($_POST['pruefziffer'] ?? '');
-    $gueltigBis = trim($_POST['gueltig_bis'] ?? '');
-    $passwort = $_POST['passwort'] ?? '';
+    $typ = trim((string) ($_POST['typ'] ?? ''));
+    $inhaber = trim((string) ($_POST['inhaber'] ?? ''));
+    $nummer = trim((string) ($_POST['nummer'] ?? ''));
+    $pruefziffer = trim((string) ($_POST['pruefziffer'] ?? ''));
+    $gueltigBis = trim((string) ($_POST['gueltig_bis'] ?? ''));
+    $passwort = (string) ($_POST['passwort'] ?? '');
+    $nummerClean = strtoupper(str_replace([' ', '-'], '', $nummer));
 
-
-    $erlaubt = ['Kreditkarte', 'Bankeinzug', 'PayPal'];
-    if (!in_array($typ, $erlaubt, true) || $inhaber === '' || $nummer === '' || $passwort === '') {
-        echo json_encode(['success' => false, 'message' => 'Bitte alle Felder korrekt ausfüllen.']);
-        exit;
-    }
-
-    // Format prüfen
-    $nummerClean = str_replace([' ', '-'], '', $nummer);
-    if ($typ === 'Kreditkarte' && !preg_match('/^\d{16}$/', $nummerClean)) {
-        echo json_encode(['success' => false, 'message' => 'Die Kartennummer muss aus 16 Ziffern bestehen.']);
-        exit;
-    }
-    if ($typ === 'Kreditkarte' && !preg_match('/^\d{3}$/', $pruefziffer)) {
-        echo json_encode(['success' => false, 'message' => 'Die Prüfziffer muss aus 3 Ziffern bestehen.']);
-        exit;
-    }
-    if ($typ === 'Kreditkarte' && !preg_match('#^(0[1-9]|1[0-2])/\d{2}$#', $gueltigBis)) {
-        echo json_encode(['success' => false, 'message' => 'Bitte ein gültiges Datum im Format MM/JJ angeben.']);
-        exit;
-    }
-    // Nur bei Kreditkarte speichern
-    if ($typ !== 'Kreditkarte') {
-        $pruefziffer = null;
-        $gueltigBis = null;
-    }
-    if ($typ === 'PayPal' && !filter_var($nummer, FILTER_VALIDATE_EMAIL)) {
-        echo json_encode(['success' => false, 'message' => 'Bitte eine gültige E-Mail Adresse angeben.']);
-        exit;
-    }
-    if ($typ === 'Bankeinzug' && !preg_match('/^AT\d{18}$/', strtoupper($nummerClean))) {
-        echo json_encode(['success' => false, 'message' => 'Bitte eine gültige IBAN angeben.']);
-        exit;
+    $valid = in_array($typ, ['Kreditkarte', 'Bankeinzug', 'PayPal'], true) && $inhaber !== '' && $passwort !== '';
+    $valid = $valid && match ($typ) {
+        'Kreditkarte' => preg_match('/^\d{16}$/', $nummerClean) && preg_match('/^\d{3}$/', $pruefziffer) && preg_match('#^(0[1-9]|1[0-2])/\d{2}$#', $gueltigBis),
+        'Bankeinzug' => preg_match('/^AT\d{18}$/', $nummerClean),
+        'PayPal' => filter_var($nummer, FILTER_VALIDATE_EMAIL),
+        default => false,
+    };
+    if (!$valid) {
+        respond(['success' => false, 'message' => 'Bitte gültige Zahlungsdaten angeben.'], 422);
     }
 
-    // Passwort prüfen
-    $pstmt = mysqli_prepare($conn, "SELECT passwort_hash FROM users WHERE id = ?");
-    mysqli_stmt_bind_param($pstmt, "i", $userId);
-    mysqli_stmt_execute($pstmt);
-    $u = mysqli_fetch_assoc(mysqli_stmt_get_result($pstmt));
-    if (!$u || !password_verify($passwort, $u['passwort_hash'])) {
-        echo json_encode(['success' => false, 'message' => 'Das Passwort ist falsch.']);
-        exit;
+    $check = $conn->prepare('SELECT passwort_hash FROM users WHERE id = ? AND aktiv = 1');
+    $check->bind_param('i', $userId);
+    $check->execute();
+    $user = $check->get_result()->fetch_assoc();
+    if (!$user || !password_verify($passwort, $user['passwort_hash'])) {
+        respond(['success' => false, 'message' => 'Das Passwort ist falsch.'], 403);
     }
 
-    $stmt = mysqli_prepare($conn, "INSERT INTO zahlungsmoeglichkeiten (user_id, typ, inhaber, nummer, pruefziffer, gueltig_bis) VALUES (?, ?, ?, ?, ?, ?)");
-    mysqli_stmt_bind_param($stmt, "isssss", $userId, $typ, $inhaber, $nummer, $pruefziffer, $gueltigBis);
-
-    if (mysqli_stmt_execute($stmt)) {
-        echo json_encode(['success' => true]);
-    } else {
-        echo json_encode(['success' => false, 'message' => 'Speichern fehlgeschlagen.']);
-    }
-    exit;
+    // CVV wird aus Sicherheitsgründen validiert, aber nicht gespeichert.
+    $storedNumber = $typ === 'PayPal' ? $nummer : $nummerClean;
+    $emptyCvv = null;
+    $expiry = $typ === 'Kreditkarte' ? $gueltigBis : null;
+    $stmt = $conn->prepare('INSERT INTO zahlungsmoeglichkeiten (user_id, typ, inhaber, nummer, pruefziffer, gueltig_bis) VALUES (?, ?, ?, ?, ?, ?)');
+    $stmt->bind_param('isssss', $userId, $typ, $inhaber, $storedNumber, $emptyCvv, $expiry);
+    $stmt->execute();
+    respond(['success' => true, 'id' => $conn->insert_id]);
 }
 
-// Zahlungsmöglichkeit löschen
 if ($action === 'deletePaymentMethod') {
-    if (!isset($_SESSION['user_id'])) {
-        echo json_encode(['success' => false, 'message' => 'Nicht eingeloggt.']);
-        exit;
-    }
-    $userId = (int)$_SESSION['user_id'];
-    $id = (int)($_POST['id'] ?? 0);
-
-    $stmt = mysqli_prepare($conn, "DELETE FROM zahlungsmoeglichkeiten WHERE id = ? AND user_id = ?");
-    mysqli_stmt_bind_param($stmt, "ii", $id, $userId);
-    mysqli_stmt_execute($stmt);
-
-    echo json_encode(['success' => true]);
-    exit;
+    $id = (int) ($_POST['id'] ?? 0);
+    $stmt = $conn->prepare('DELETE FROM zahlungsmoeglichkeiten WHERE id = ? AND user_id = ?');
+    $stmt->bind_param('ii', $id, $userId);
+    $stmt->execute();
+    respond(['success' => true]);
 }
 
-echo json_encode(['success' => false, 'message' => 'Ungültige Aktion']);
+respond(['success' => false, 'message' => 'Ungültige Aktion.'], 400);

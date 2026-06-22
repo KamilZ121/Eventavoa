@@ -1,4 +1,22 @@
-Webentwicklungsprojekt - 4B3/4B4
-SS 2026
+# Eventavoa
 
-Team03: Eventavoa
+Webshop-Projekt für Eventtechnik (Webentwicklungsprojekt, SS 2026). Frontend und Backend tauschen ausschließlich JSON über jQuery `$.ajax` aus.
+
+## Installation
+
+1. Repository nach `C:\xampp\htdocs\Eventavoa` legen.
+2. Apache und MySQL über XAMPP starten.
+3. `database/eventavoa.sql` in phpMyAdmin importieren. Bei einer bestehenden älteren Datenbank stattdessen einmalig `database/001_refactoring.sql` ausführen.
+4. `http://localhost/eventavoa/` öffnen.
+
+Die Datenbankverbindung befindet sich in `backend/config/dbaccess.php` und verwendet standardmäßig die lokale XAMPP-Datenbank `eventavoa` mit Benutzer `root` ohne Passwort.
+
+## Struktur
+
+- `frontend/`: HTML, CSS, JavaScript und Produktbilder
+- `backend/config/`: Datenbank- und gemeinsame API-Basis
+- `backend/logic/`: JSON-Endpunkte für Produkte, Login, Warenkorb, Bestellungen und Administration
+- `backend/models/`: Domänenmodelle
+- `database/`: vollständiger Dump und additive Migration
+
+Der Administrationsbereich liegt unter `frontend/sites/admin.html`. Produktbilder dürfen JPG, PNG oder WebP sein und maximal 5 MB groß sein.

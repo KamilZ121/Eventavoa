@@ -1,322 +1,191 @@
 <?php
+declare(strict_types=1);
 
-session_start();
-header("Content-Type: application/json; charset=UTF-8");
-require_once __DIR__ . "/../config/DBAccess.php";
+require_once __DIR__ . '/../config/api.php';
+require_once __DIR__ . '/../config/dataHandler.php';
+bootstrapApi();
 
-$conn = DBAccess::getInstance()->getConnection();
-$action = $_REQUEST['action'] ?? '';
+$dataHandler = new DataHandler();
+$conn = $dataHandler->getConnection();
+restoreRememberedLogin($dataHandler);
+$action = requestAction();
 
-// keine Session aber remember me cookie
-if (!isset($_SESSION['user_id'])) {
-    tryRememberLogin($conn);
-}
-
-// Neuen Benutzer registrieren
 if ($action === 'register') {
-    $anrede = trim($_POST['anrede'] ?? '');
-    $vorname = trim($_POST['vorname'] ?? '');
-    $nachname = trim($_POST['nachname'] ?? '');
-    $email = trim($_POST['email'] ?? '');
-    $benutzername = trim($_POST['benutzername'] ?? '');
-    $passwort = $_POST['passwort'] ?? '';
-    $passwort2 = $_POST['passwort2'] ?? '';
-    $adresse = trim($_POST['adresse'] ?? '');
-    $plz = trim($_POST['plz'] ?? '');
-    $ort = trim($_POST['ort'] ?? '');
+    $fields = [];
+    foreach (['anrede', 'vorname', 'nachname', 'adresse', 'plz', 'ort', 'email', 'benutzername'] as $name) {
+        $fields[$name] = trim((string) ($_POST[$name] ?? ''));
+    }
+    $password = (string) ($_POST['passwort'] ?? '');
+    $passwordRepeat = (string) ($_POST['passwort2'] ?? '');
+    $paymentType = trim((string) ($_POST['payment_type'] ?? ''));
+    $paymentOwner = trim((string) ($_POST['payment_owner'] ?? ($fields['vorname'] . ' ' . $fields['nachname'])));
+    $paymentIdentifier = trim((string) ($_POST['payment_identifier'] ?? ''));
 
-    // Pflichtfelder check
-    if ($vorname === '' || $nachname === '' || $email === '' || $benutzername === '' || $passwort === ''
-        || $adresse === '' || $plz === '' || $ort === '') {
-        echo json_encode(['success' => false, 'message' => 'Bitte alle Pflichtfelder ausfüllen.']);
-        exit;
+    if (in_array('', $fields, true) || $password === '' || $paymentType === '' || $paymentIdentifier === '') {
+        respond(['success' => false, 'message' => 'Bitte alle Pflichtfelder ausfüllen.'], 422);
+    }
+    if (!in_array($fields['anrede'], ['Herr', 'Frau', 'Divers'], true)
+        || !filter_var($fields['email'], FILTER_VALIDATE_EMAIL)
+        || !preg_match('/^\d{4}$/', $fields['plz'])
+        || mb_strlen($fields['benutzername']) < 3
+        || mb_strlen($password) < 8) {
+        respond(['success' => false, 'message' => 'Bitte gültige Daten angeben. Das Passwort benötigt mindestens 8 Zeichen.'], 422);
+    }
+    if ($password !== $passwordRepeat) {
+        respond(['success' => false, 'message' => 'Die Passwörter stimmen nicht überein.'], 422);
+    }
+    $typeMap = ['paypal' => 'PayPal', 'kreditkarte' => 'Kreditkarte', 'bankeinzug' => 'Bankeinzug'];
+    if (!isset($typeMap[$paymentType])) {
+        respond(['success' => false, 'message' => 'Bitte eine gültige Zahlungsart auswählen.'], 422);
+    }
+    $paymentType = $typeMap[$paymentType];
+    $cleanIdentifier = strtoupper(str_replace([' ', '-'], '', $paymentIdentifier));
+    $paymentValid = match ($paymentType) {
+        'PayPal' => filter_var($paymentIdentifier, FILTER_VALIDATE_EMAIL),
+        'Kreditkarte' => preg_match('/^\d{16}$/', $cleanIdentifier),
+        'Bankeinzug' => preg_match('/^AT\d{18}$/', $cleanIdentifier),
+    };
+    if (!$paymentValid) {
+        respond(['success' => false, 'message' => 'Die Zahlungsinformation ist ungültig.'], 422);
     }
 
-    // E-Mail serverseitig prüfen (nicht nur HTML5)
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        echo json_encode(['success' => false, 'message' => 'Bitte eine gültige E-Mail-Adresse angeben.']);
-        exit;
+    if ($dataHandler->userExists($fields['email'], $fields['benutzername'])) {
+        respond(['success' => false, 'message' => 'E-Mail oder Benutzername ist bereits vergeben.'], 409);
     }
 
-    // Passwörter müssen übereinstimmen
-    if ($passwort !== $passwort2) {
-        echo json_encode(['success' => false, 'message' => 'Die Passwörter stimmen nicht überein.']);
-        exit;
+    $conn->begin_transaction();
+    try {
+        $hash = password_hash($password, PASSWORD_DEFAULT);
+        $stmt = $conn->prepare('INSERT INTO users (anrede, vorname, nachname, email, benutzername, passwort_hash) VALUES (?, ?, ?, ?, ?, ?)');
+        $stmt->bind_param('ssssss', $fields['anrede'], $fields['vorname'], $fields['nachname'], $fields['email'], $fields['benutzername'], $hash);
+        $stmt->execute();
+        $userId = $conn->insert_id;
+        $address = $conn->prepare("INSERT INTO addresses (user_id, address_type, strasse, plz, ort, is_default) VALUES (?, 'shipping', ?, ?, ?, 1)");
+        $address->bind_param('isss', $userId, $fields['adresse'], $fields['plz'], $fields['ort']);
+        $address->execute();
+        $storedIdentifier = $paymentType === 'PayPal' ? $paymentIdentifier : $cleanIdentifier;
+        $payment = $conn->prepare('INSERT INTO zahlungsmoeglichkeiten (user_id, typ, inhaber, nummer) VALUES (?, ?, ?, ?)');
+        $payment->bind_param('isss', $userId, $paymentType, $paymentOwner, $storedIdentifier);
+        $payment->execute();
+        $conn->commit();
+        respond(['success' => true, 'message' => 'Registrierung erfolgreich.']);
+    } catch (Throwable $exception) {
+        $conn->rollback();
+        respond(['success' => false, 'message' => 'Registrierung konnte nicht gespeichert werden.'], 500);
     }
-
-    // E-Mail/Benutzername check
-    $check = mysqli_prepare($conn, "SELECT id FROM users WHERE email = ? OR benutzername = ?");
-    mysqli_stmt_bind_param($check, "ss", $email, $benutzername);
-    mysqli_stmt_execute($check);
-    mysqli_stmt_store_result($check);
-    if (mysqli_stmt_num_rows($check) > 0) {
-        echo json_encode(['success' => false, 'message' => 'E-Mail oder Benutzername ist bereits vergeben.']);
-        exit;
-    }
-
-    // Passwort hashen
-    $hash = password_hash($passwort, PASSWORD_DEFAULT);
-
-    // Benutzer anlegen
-    $stmt = mysqli_prepare($conn, "
-        INSERT INTO users (anrede, vorname, nachname, email, benutzername, passwort_hash)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ");
-    mysqli_stmt_bind_param($stmt, "ssssss", $anrede, $vorname, $nachname, $email, $benutzername, $hash);
-
-    if (mysqli_stmt_execute($stmt)) {
-        // Adresse speichern
-        $newUserId = mysqli_insert_id($conn);
-        $addr = mysqli_prepare($conn, "
-            INSERT INTO addresses (user_id, address_type, strasse, plz, ort, is_default)
-            VALUES (?, 'shipping', ?, ?, ?, 1)
-        ");
-        mysqli_stmt_bind_param($addr, "isss", $newUserId, $adresse, $plz, $ort);
-        mysqli_stmt_execute($addr);
-
-        // Direkt einloggen nach der Registrierung
-        $_SESSION['user_id'] = $newUserId;
-        $_SESSION['benutzername'] = $benutzername;
-        $_SESSION['rolle'] = 'user';
-
-        echo json_encode(['success' => true]);
-    } else {
-        echo json_encode(['success' => false, 'message' => 'Registrierung fehlgeschlagen. Bitte später erneut versuchen.']);
-    }
-    exit;
 }
-
-// Benutzer einloggen
 if ($action === 'login') {
-    $benutzername = trim($_POST['benutzername'] ?? '');
-    $passwort = $_POST['passwort'] ?? '';
-
-    if ($benutzername === '' || $passwort === '') {
-        echo json_encode(['success' => false, 'message' => 'Bitte Benutzername und Passwort angeben.']);
-        exit;
+    $identifier = trim((string) ($_POST['benutzername'] ?? ''));
+    $password = (string) ($_POST['passwort'] ?? '');
+    $user = $dataHandler->getUserForLogin($identifier);
+    if (!$user || !(bool) $user['aktiv'] || !password_verify($password, $user['passwort_hash'])) {
+        respond(['success' => false, 'message' => 'Anmeldedaten ungültig oder Konto deaktiviert.'], 401);
     }
-
-    // User per Benutzername oder E-Mail holen
-    $stmt = mysqli_prepare($conn, "SELECT id, benutzername, passwort_hash, rolle FROM users WHERE benutzername = ? OR email = ?");
-    mysqli_stmt_bind_param($stmt, "ss", $benutzername, $benutzername);
-    mysqli_stmt_execute($stmt);
-    $result = mysqli_stmt_get_result($stmt);
-    $user = mysqli_fetch_assoc($result);
-
-
-    if (!$user || !password_verify($passwort, $user['passwort_hash'])) {
-        echo json_encode(['success' => false, 'message' => 'Benutzername oder Passwort ist falsch.']);
-        exit;
-    }
-
-    // Login Session
-    $_SESSION['user_id'] = (int)$user['id'];
-    $_SESSION['benutzername'] = $user['benutzername'];
-    $_SESSION['rolle'] = $user['rolle'];
-
-    // remember me cookie
+    session_regenerate_id(true);
+    setSessionUser(new User($user));
     if (($_POST['remember'] ?? '') === '1') {
         $token = bin2hex(random_bytes(32));
-        $tokenHash = hash('sha256', $token);
-        $userId = (int)$user['id'];
-
-        $upd = mysqli_prepare($conn, "UPDATE users SET remember_token = ? WHERE id = ?");
-        mysqli_stmt_bind_param($upd, "si", $tokenHash, $userId);
-        mysqli_stmt_execute($upd);
-
-        // 30 tage
-        setcookie('remember', $userId . ':' . $token, [
-            'expires' => time() + 30 * 24 * 60 * 60,
-            'path' => '/',
-            'httponly' => true,
-            'samesite' => 'Lax'
-        ]);
+        $hash = hash('sha256', $token);
+        $userId = (int) $user['id'];
+        $update = $conn->prepare('UPDATE users SET remember_token = ? WHERE id = ?');
+        $update->bind_param('si', $hash, $userId);
+        $update->execute();
+        setcookie('remember', $userId . ':' . $token, ['expires' => time() + 2592000, 'path' => '/eventavoa', 'httponly' => true, 'samesite' => 'Lax']);
     }
-
-    echo json_encode(['success' => true]);
-    exit;
+    respond(['success' => true, 'rolle' => $user['rolle']]);
 }
 
-// Login Status
 if ($action === 'status') {
-    if (isset($_SESSION['user_id'])) {
-        echo json_encode([
-            'loggedIn' => true,
-            'benutzername' => $_SESSION['benutzername'],
-            'rolle' => $_SESSION['rolle']
-        ]);
-    } else {
-        echo json_encode(['loggedIn' => false]);
-    }
-    exit;
+    respond(empty($_SESSION['user_id'])
+        ? ['success' => true, 'loggedIn' => false]
+        : ['success' => true, 'loggedIn' => true, 'benutzername' => $_SESSION['benutzername'], 'rolle' => $_SESSION['rolle']]);
 }
 
-// Benutzer ausloggen
 if ($action === 'logout') {
-    // remember me in db
-    if (isset($_SESSION['user_id'])) {
-        $userId = (int)$_SESSION['user_id'];
-        $upd = mysqli_prepare($conn, "UPDATE users SET remember_token = NULL WHERE id = ?");
-        mysqli_stmt_bind_param($upd, "i", $userId);
-        mysqli_stmt_execute($upd);
+    if (!empty($_SESSION['user_id'])) {
+        $userId = (int) $_SESSION['user_id'];
+        $stmt = $conn->prepare('UPDATE users SET remember_token = NULL WHERE id = ?');
+        $stmt->bind_param('i', $userId);
+        $stmt->execute();
     }
-    // löschen
-    if (isset($_COOKIE['remember'])) {
-        setcookie('remember', '', ['expires' => time() - 3600, 'path' => '/']);
-    }
-
+    setcookie('remember', '', ['expires' => time() - 3600, 'path' => '/eventavoa']);
     session_unset();
     session_destroy();
-    echo json_encode(['success' => true]);
-    exit;
+    respond(['success' => true]);
 }
 
-// Eigene Profildaten liefern (für eingeloggte user)
 if ($action === 'getProfile') {
-    if (!isset($_SESSION['user_id'])) {
-        echo json_encode(['success' => false, 'message' => 'Nicht eingeloggt.']);
-        exit;
-    }
-
-    $userId = (int)$_SESSION['user_id'];
-    $stmt = mysqli_prepare($conn, "SELECT anrede, vorname, nachname, email, benutzername, rolle FROM users WHERE id = ?");
-    mysqli_stmt_bind_param($stmt, "i", $userId);
-    mysqli_stmt_execute($stmt);
-    $result = mysqli_stmt_get_result($stmt);
-    $user = mysqli_fetch_assoc($result);
-
-    if (!$user) {
-        echo json_encode(['success' => false, 'message' => 'Benutzer nicht gefunden.']);
-        exit;
-    }
-
-    // Standard-Lieferadresse dazuladen
-    $astmt = mysqli_prepare($conn, "SELECT strasse, plz, ort FROM addresses WHERE user_id = ? AND address_type = 'shipping' ORDER BY is_default DESC, id ASC LIMIT 1");
-    mysqli_stmt_bind_param($astmt, "i", $userId);
-    mysqli_stmt_execute($astmt);
-    $addr = mysqli_fetch_assoc(mysqli_stmt_get_result($astmt));
-    $user['adresse'] = $addr['strasse'] ?? '';
-    $user['plz'] = $addr['plz'] ?? '';
-    $user['ort'] = $addr['ort'] ?? '';
-
-    echo json_encode(['success' => true, 'user' => $user]);
-    exit;
+    $userId = requireLogin();
+    respond(['success' => true, 'user' => $dataHandler->getProfile($userId)]);
 }
 
-// Eigene Stammdaten bearbeiten (passwort nötig)
 if ($action === 'updateProfile') {
-    if (!isset($_SESSION['user_id'])) {
-        echo json_encode(['success' => false, 'message' => 'Nicht eingeloggt.']);
-        exit;
+    $userId = requireLogin();
+    $values = [];
+    foreach (['anrede', 'vorname', 'nachname', 'email', 'benutzername', 'adresse', 'plz', 'ort'] as $field) {
+        $values[$field] = trim((string) ($_POST[$field] ?? ''));
     }
-
-    $userId = (int)$_SESSION['user_id'];
-    $anrede = trim($_POST['anrede'] ?? '');
-    $vorname = trim($_POST['vorname'] ?? '');
-    $nachname = trim($_POST['nachname'] ?? '');
-    $email = trim($_POST['email'] ?? '');
-    $benutzername = trim($_POST['benutzername'] ?? '');
-    $passwort = $_POST['passwort'] ?? '';
-    $adresse = trim($_POST['adresse'] ?? '');
-    $plz = trim($_POST['plz'] ?? '');
-    $ort = trim($_POST['ort'] ?? '');
-
-    // Pflichtfelder
-    if ($vorname === '' || $nachname === '' || $email === '' || $benutzername === '' || $passwort === ''
-        || $adresse === '' || $plz === '' || $ort === '') {
-        echo json_encode(['success' => false, 'message' => 'Bitte alle Pflichtfelder ausfüllen.']);
-        exit;
+    $password = (string) ($_POST['passwort'] ?? '');
+    if (in_array('', $values, true) || !filter_var($values['email'], FILTER_VALIDATE_EMAIL) || !preg_match('/^\d{4}$/', $values['plz'])) {
+        respond(['success' => false, 'message' => 'Bitte gültige und vollständige Daten angeben.'], 422);
     }
-
-    // E-Mail Format
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        echo json_encode(['success' => false, 'message' => 'Bitte eine gültige E-Mail-Adresse angeben.']);
-        exit;
+    $check = $conn->prepare('SELECT passwort_hash FROM users WHERE id = ?');
+    $check->bind_param('i', $userId);
+    $check->execute();
+    $user = $check->get_result()->fetch_assoc();
+    if (!$user || !password_verify($password, $user['passwort_hash'])) {
+        respond(['success' => false, 'message' => 'Das Passwort ist falsch.'], 403);
     }
-
-    // Aktuelles Passwort prüfen
-    $stmt = mysqli_prepare($conn, "SELECT passwort_hash FROM users WHERE id = ?");
-    mysqli_stmt_bind_param($stmt, "i", $userId);
-    mysqli_stmt_execute($stmt);
-    $result = mysqli_stmt_get_result($stmt);
-    $user = mysqli_fetch_assoc($result);
-
-    if (!$user || !password_verify($passwort, $user['passwort_hash'])) {
-        echo json_encode(['success' => false, 'message' => 'Das Passwort ist falsch.']);
-        exit;
+    if ($dataHandler->userExists($values['email'], $values['benutzername'], $userId)) {
+        respond(['success' => false, 'message' => 'E-Mail oder Benutzername ist bereits vergeben.'], 409);
     }
-
-    // E-Mail Benutzername darf nicht wem anderen gehören
-    $check = mysqli_prepare($conn, "SELECT id FROM users WHERE (email = ? OR benutzername = ?) AND id != ?");
-    mysqli_stmt_bind_param($check, "ssi", $email, $benutzername, $userId);
-    mysqli_stmt_execute($check);
-    mysqli_stmt_store_result($check);
-    if (mysqli_stmt_num_rows($check) > 0) {
-        echo json_encode(['success' => false, 'message' => 'E-Mail oder Benutzername ist bereits vergeben.']);
-        exit;
-    }
-
-    // Daten speichern
-    $upd = mysqli_prepare($conn, "UPDATE users SET anrede = ?, vorname = ?, nachname = ?, email = ?, benutzername = ? WHERE id = ?");
-    mysqli_stmt_bind_param($upd, "sssssi", $anrede, $vorname, $nachname, $email, $benutzername, $userId);
-
-    if (mysqli_stmt_execute($upd)) {
-        // Benutzername in der Session aktuell halten
-        $_SESSION['benutzername'] = $benutzername;
-
-        // Lieferadresse aktualisieren, falls vorhanden - sonst neu anlegen
-        $find = mysqli_prepare($conn, "SELECT id FROM addresses WHERE user_id = ? AND address_type = 'shipping' ORDER BY is_default DESC, id ASC LIMIT 1");
-        mysqli_stmt_bind_param($find, "i", $userId);
-        mysqli_stmt_execute($find);
-        $existing = mysqli_fetch_assoc(mysqli_stmt_get_result($find));
-
+    $conn->begin_transaction();
+    try {
+        $stmt = $conn->prepare('UPDATE users SET anrede = ?, vorname = ?, nachname = ?, email = ?, benutzername = ? WHERE id = ?');
+        $stmt->bind_param('sssssi', $values['anrede'], $values['vorname'], $values['nachname'], $values['email'], $values['benutzername'], $userId);
+        $stmt->execute();
+        $address = $conn->prepare("INSERT INTO addresses (user_id, address_type, strasse, plz, ort, is_default)
+                                   VALUES (?, 'shipping', ?, ?, ?, 1)
+                                   ON DUPLICATE KEY UPDATE strasse = VALUES(strasse), plz = VALUES(plz), ort = VALUES(ort)");
+        // Der Dump garantiert den Unique-Key noch nicht: bestehende Adresse daher separat aktualisieren.
+        $find = $conn->prepare("SELECT id FROM addresses WHERE user_id = ? AND address_type = 'shipping' ORDER BY is_default DESC, id LIMIT 1");
+        $find->bind_param('i', $userId);
+        $find->execute();
+        $existing = $find->get_result()->fetch_assoc();
         if ($existing) {
-            $aid = (int)$existing['id'];
-            $ua = mysqli_prepare($conn, "UPDATE addresses SET strasse = ?, plz = ?, ort = ? WHERE id = ?");
-            mysqli_stmt_bind_param($ua, "sssi", $adresse, $plz, $ort, $aid);
-            mysqli_stmt_execute($ua);
+            $address = $conn->prepare('UPDATE addresses SET strasse = ?, plz = ?, ort = ?, is_default = 1 WHERE id = ?');
+            $addressId = (int) $existing['id'];
+            $address->bind_param('sssi', $values['adresse'], $values['plz'], $values['ort'], $addressId);
         } else {
-            $ia = mysqli_prepare($conn, "INSERT INTO addresses (user_id, address_type, strasse, plz, ort, is_default) VALUES (?, 'shipping', ?, ?, ?, 1)");
-            mysqli_stmt_bind_param($ia, "isss", $userId, $adresse, $plz, $ort);
-            mysqli_stmt_execute($ia);
+            $address = $conn->prepare("INSERT INTO addresses (user_id, address_type, strasse, plz, ort, is_default) VALUES (?, 'shipping', ?, ?, ?, 1)");
+            $address->bind_param('isss', $userId, $values['adresse'], $values['plz'], $values['ort']);
         }
-
-        echo json_encode(['success' => true]);
-    } else {
-        echo json_encode(['success' => false, 'message' => 'Speichern fehlgeschlagen. Bitte später erneut versuchen.']);
+        $address->execute();
+        $conn->commit();
+        $_SESSION['benutzername'] = $values['benutzername'];
+        respond(['success' => true]);
+    } catch (Throwable $exception) {
+        $conn->rollback();
+        respond(['success' => false, 'message' => 'Daten konnten nicht gespeichert werden.'], 500);
     }
-    exit;
 }
 
-echo json_encode(['success' => false, 'message' => 'Ungültige Aktion']);
+respond(['success' => false, 'message' => 'Ungültige Aktion.'], 400);
 
-// auto login
-function tryRememberLogin($conn) {
-    if (empty($_COOKIE['remember'])) {
-        return;
-    }
+function setSessionUser(User $user): void
+{
+    $_SESSION['user_id'] = $user->id;
+    $_SESSION['benutzername'] = $user->benutzername;
+    $_SESSION['rolle'] = $user->rolle;
+}
 
-    // Cookie
-    $parts = explode(':', $_COOKIE['remember'], 2);
-    if (count($parts) !== 2) {
-        return;
-    }
-
-    $userId = (int)$parts[0];
-    $tokenHash = hash('sha256', $parts[1]);
-
-    $stmt = mysqli_prepare($conn, "SELECT id, benutzername, rolle, remember_token FROM users WHERE id = ? AND aktiv = 1");
-    mysqli_stmt_bind_param($stmt, "i", $userId);
-    mysqli_stmt_execute($stmt);
-    $result = mysqli_stmt_get_result($stmt);
-    $user = mysqli_fetch_assoc($result);
-
-    // wenn cookie gesetzt ist und mit hash übereinstimmt einloggen
-    if (!$user || empty($user['remember_token']) || !hash_equals($user['remember_token'], $tokenHash)) {
-        return;
-    }
-
-    $_SESSION['user_id'] = (int)$user['id'];
-    $_SESSION['benutzername'] = $user['benutzername'];
-    $_SESSION['rolle'] = $user['rolle'];
+function restoreRememberedLogin($dataHandler)
+{
+    if (!empty($_SESSION['user_id']) || empty($_COOKIE['remember'])) return;
+    $parts = explode(':', (string) $_COOKIE['remember'], 2);
+    if (count($parts) !== 2) return;
+    $userId = (int) $parts[0];
+    $hash = hash('sha256', $parts[1]);
+    $user = $dataHandler->getRememberedUser($userId);
+    if ($user && $user['remember_token'] && hash_equals($user['remember_token'], $hash)) setSessionUser(new User($user));
 }

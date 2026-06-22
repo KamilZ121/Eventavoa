@@ -1,184 +1,149 @@
 <?php
+declare(strict_types=1);
 
-session_start();
-header("Content-Type: application/json; charset=UTF-8");
+require_once __DIR__ . '/../config/api.php';
+require_once __DIR__ . '/../config/dataHandler.php';
+bootstrapApi();
 
-require_once __DIR__ . "/../config/DBAccess.php";
+$dataHandler = new DataHandler();
+$conn = $dataHandler->getConnection();
+$action = requestAction();
+$userId = requireLogin();
 
-$conn = DBAccess::getInstance()->getConnection();
-$action = $_REQUEST['action'] ?? '';
-
-// Bestellung aufgeben wenn eingeloggt
 if ($action === 'placeOrder') {
-    if (!isset($_SESSION['user_id'])) {
-        echo json_encode(['success' => false, 'needsLogin' => true, 'message' => 'Bitte zuerst einloggen.']);
-        exit;
-    }
-
-    $userId = (int)$_SESSION['user_id'];
     $cart = $_SESSION['cart'] ?? [];
-
-    if (empty($cart)) {
-        echo json_encode(['success' => false, 'message' => 'Ihr Warenkorb ist leer.']);
-        exit;
+    if (!$cart) {
+        respond(['success' => false, 'message' => 'Ihr Warenkorb ist leer.'], 422);
     }
 
-    // Zahlungsmöglichkeit muss ausgewählt sein
-    $zahlungId = (int)($_POST['payment_method_id'] ?? 0);
-    $pcheck = mysqli_prepare($conn, "SELECT id FROM zahlungsmoeglichkeiten WHERE id = ? AND user_id = ?");
-    mysqli_stmt_bind_param($pcheck, "ii", $zahlungId, $userId);
-    mysqli_stmt_execute($pcheck);
-    mysqli_stmt_store_result($pcheck);
-    if (mysqli_stmt_num_rows($pcheck) === 0) {
-        echo json_encode(['success' => false, 'needsPayment' => true, 'message' => 'Bitte eine Zahlungsmöglichkeit auswählen.']);
-        exit;
+    $paymentId = max(0, (int) ($_POST['payment_method_id'] ?? 0));
+    $voucherCode = strtoupper(trim((string) ($_POST['voucher_code'] ?? '')));
+    if ($paymentId === 0 && $voucherCode === '') {
+        respond(['success' => false, 'message' => 'Bitte Zahlungsart oder Gutschein angeben.'], 422);
+    }
+    if ($paymentId > 0) {
+        $check = $conn->prepare('SELECT id FROM zahlungsmoeglichkeiten WHERE id = ? AND user_id = ?');
+        $check->bind_param('ii', $paymentId, $userId);
+        $check->execute();
+        if (!$check->get_result()->fetch_assoc()) {
+            respond(['success' => false, 'message' => 'Ungültige Zahlungsart.'], 422);
+        }
     }
 
-    // Preise von der DB holen
-    $priceStmt = mysqli_prepare($conn, "SELECT price FROM products WHERE id = ? AND is_active = 1");
+    $stmt = $conn->prepare('SELECT id, name, price FROM products WHERE id = ? AND is_active = 1');
     $items = [];
-    $total = 0.0;
-
+    $subtotal = 0.0;
     foreach ($cart as $productId => $qty) {
-        $productId = (int)$productId;
-        $qty = (int)$qty;
-        if ($qty < 1) {
-            continue;
+        $productId = (int) $productId;
+        $qty = max(0, (int) $qty);
+        $stmt->bind_param('i', $productId);
+        $stmt->execute();
+        $product = $stmt->get_result()->fetch_assoc();
+        if ($product && $qty > 0) {
+            $price = (float) $product['price'];
+            $subtotal += $price * $qty;
+            $items[] = ['id' => $productId, 'name' => $product['name'], 'qty' => $qty, 'price' => $price];
         }
-
-        mysqli_stmt_bind_param($priceStmt, "i", $productId);
-        mysqli_stmt_execute($priceStmt);
-        $row = mysqli_fetch_assoc(mysqli_stmt_get_result($priceStmt));
-        if (!$row) {
-            continue; // falls produkt nicht aktiv ist
-        }
-
-        $price = (float)$row['price'];
-        $total += $price * $qty;
-        $items[] = ['product_id' => $productId, 'menge' => $qty, 'einzelpreis' => $price];
+    }
+    if (!$items) {
+        respond(['success' => false, 'message' => 'Keine gültigen Produkte im Warenkorb.'], 422);
     }
 
-    if (empty($items)) {
-        echo json_encode(['success' => false, 'message' => 'Keine gültigen Produkte im Warenkorb.']);
-        exit;
-    }
-
-    // Bestellung speichern
-    mysqli_begin_transaction($conn);
+    $conn->begin_transaction();
     try {
-        $ins = mysqli_prepare($conn, "INSERT INTO orders (user_id, zahlung_id, gesamt) VALUES (?, ?, ?)");
-        mysqli_stmt_bind_param($ins, "iid", $userId, $zahlungId, $total);
-        mysqli_stmt_execute($ins);
-        $orderId = mysqli_insert_id($conn);
-
-        $insItem = mysqli_prepare($conn, "INSERT INTO order_items (order_id, product_id, menge, einzelpreis) VALUES (?, ?, ?, ?)");
-        foreach ($items as $it) {
-            mysqli_stmt_bind_param($insItem, "iiid", $orderId, $it['product_id'], $it['menge'], $it['einzelpreis']);
-            mysqli_stmt_execute($insItem);
+        $voucherId = null;
+        $discount = 0.0;
+        if ($voucherCode !== '') {
+            $voucherStmt = $conn->prepare('SELECT id, remaining_value FROM vouchers WHERE code = ? AND expires_at >= CURRENT_DATE AND remaining_value > 0 FOR UPDATE');
+            $voucherStmt->bind_param('s', $voucherCode);
+            $voucherStmt->execute();
+            $voucher = $voucherStmt->get_result()->fetch_assoc();
+            if (!$voucher) {
+                throw new DomainException('Der Gutschein ist ungültig, abgelaufen oder aufgebraucht.');
+            }
+            $voucherId = (int) $voucher['id'];
+            $discount = min($subtotal, (float) $voucher['remaining_value']);
+            $remaining = (float) $voucher['remaining_value'] - $discount;
+            $updateVoucher = $conn->prepare('UPDATE vouchers SET remaining_value = ? WHERE id = ?');
+            $updateVoucher->bind_param('di', $remaining, $voucherId);
+            $updateVoucher->execute();
         }
+        $total = max(0, $subtotal - $discount);
+        if ($total > 0 && $paymentId === 0) {
+            throw new DomainException('Der Gutschein deckt nicht den Gesamtbetrag. Bitte zusätzlich eine Zahlungsart wählen.');
+        }
+        $paymentValue = $paymentId ?: null;
+        $insert = $conn->prepare('INSERT INTO orders (user_id, zahlung_id, gutschein_id, zwischensumme, rabatt, gesamt) VALUES (?, ?, ?, ?, ?, ?)');
+        $insert->bind_param('iiiddd', $userId, $paymentValue, $voucherId, $subtotal, $discount, $total);
+        $insert->execute();
+        $orderId = $conn->insert_id;
+        $invoice = 'RE-' . date('Y') . '-' . str_pad((string) $orderId, 6, '0', STR_PAD_LEFT);
+        $invoiceStmt = $conn->prepare('UPDATE orders SET rechnungsnummer = ? WHERE id = ?');
+        $invoiceStmt->bind_param('si', $invoice, $orderId);
+        $invoiceStmt->execute();
 
-        mysqli_commit($conn);
-    } catch (Exception $e) {
-        mysqli_rollback($conn); // Damit nur ganze Bestellungen gespeichert werden
-        echo json_encode(['success' => false, 'message' => 'Bestellung fehlgeschlagen. Bitte später erneut versuchen.']);
-        exit;
+        $itemStmt = $conn->prepare('INSERT INTO order_items (order_id, product_id, produktname, menge, einzelpreis) VALUES (?, ?, ?, ?, ?)');
+        foreach ($items as $item) {
+            $itemStmt->bind_param('iisid', $orderId, $item['id'], $item['name'], $item['qty'], $item['price']);
+            $itemStmt->execute();
+        }
+        $conn->commit();
+        $_SESSION['cart'] = [];
+        respond(['success' => true, 'orderId' => $orderId, 'invoiceNumber' => $invoice, 'gesamt' => $total]);
+    } catch (DomainException $exception) {
+        $conn->rollback();
+        respond(['success' => false, 'message' => $exception->getMessage()], 422);
+    } catch (Throwable $exception) {
+        $conn->rollback();
+        respond(['success' => false, 'message' => 'Bestellung konnte nicht gespeichert werden.'], 500);
     }
-
-    // Warenkorb leeren
-    $_SESSION['cart'] = [];
-
-    echo json_encode(['success' => true, 'orderId' => $orderId, 'gesamt' => $total]);
-    exit;
 }
 
-// Eigene Bestellungen
 if ($action === 'getOrders') {
-    if (!isset($_SESSION['user_id'])) {
-        echo json_encode(['success' => false, 'message' => 'Nicht eingeloggt.']);
-        exit;
-    }
-    $userId = (int)$_SESSION['user_id'];
-
-    $ostmt = mysqli_prepare($conn, "SELECT id, gesamt, status, created_at FROM orders WHERE user_id = ? ORDER BY created_at DESC, id DESC");
-    mysqli_stmt_bind_param($ostmt, "i", $userId);
-    mysqli_stmt_execute($ostmt);
-    $ores = mysqli_stmt_get_result($ostmt);
-
-    $istmt = mysqli_prepare($conn, "SELECT p.name, oi.menge, oi.einzelpreis FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = ?");
-    $orders = [];
-    while ($o = mysqli_fetch_assoc($ores)) {
-        $orderId = (int)$o['id'];
-        mysqli_stmt_bind_param($istmt, "i", $orderId);
-        mysqli_stmt_execute($istmt);
-        $ires = mysqli_stmt_get_result($istmt);
-
-        $items = [];
-        while ($it = mysqli_fetch_assoc($ires)) {
-            $items[] = ['name' => $it['name'], 'menge' => (int)$it['menge'], 'einzelpreis' => (float)$it['einzelpreis']];
+    $stmt = $conn->prepare('SELECT id, rechnungsnummer, gesamt, status, created_at FROM orders WHERE user_id = ? ORDER BY created_at ASC, id ASC');
+    $stmt->bind_param('i', $userId);
+    $stmt->execute();
+    $orders = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $itemStmt = $conn->prepare('SELECT produktname AS name, menge, einzelpreis FROM order_items WHERE order_id = ? ORDER BY id');
+    foreach ($orders as &$order) {
+        $order['id'] = (int) $order['id'];
+        $order['gesamt'] = (float) $order['gesamt'];
+        $itemStmt->bind_param('i', $order['id']);
+        $itemStmt->execute();
+        $order['items'] = $itemStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        foreach ($order['items'] as &$item) {
+            $item['menge'] = (int) $item['menge'];
+            $item['einzelpreis'] = (float) $item['einzelpreis'];
         }
-
-        $orders[] = [
-            'id' => $orderId,
-            'gesamt' => (float)$o['gesamt'],
-            'status' => $o['status'],
-            'created_at' => $o['created_at'],
-            'items' => $items
-        ];
     }
-
-    echo json_encode(['success' => true, 'orders' => $orders]);
-    exit;
+    respond(['success' => true, 'orders' => $orders]);
 }
 
-// Rechnungsdaten von eigenen Bestellungen
 if ($action === 'getInvoice') {
-    if (!isset($_SESSION['user_id'])) {
-        echo json_encode(['success' => false, 'message' => 'Nicht eingeloggt.']);
-        exit;
+    $orderId = (int) ($_GET['order_id'] ?? 0);
+    $stmt = $conn->prepare("SELECT o.id, o.rechnungsnummer, o.zwischensumme, o.rabatt, o.gesamt, o.created_at,
+                                  u.anrede, u.vorname, u.nachname, a.strasse, a.plz, a.ort
+                           FROM orders o JOIN users u ON u.id = o.user_id
+                           LEFT JOIN addresses a ON a.user_id = u.id AND a.address_type = 'shipping' AND a.is_default = 1
+                           WHERE o.id = ? AND o.user_id = ? LIMIT 1");
+    $stmt->bind_param('ii', $orderId, $userId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    if (!$row) {
+        respond(['success' => false, 'message' => 'Bestellung nicht gefunden.'], 404);
     }
-    $userId = (int)$_SESSION['user_id'];
-    $orderId = (int)($_GET['order_id'] ?? 0);
-
-    // Check ob bestellung zum user gehört
-    $ostmt = mysqli_prepare($conn, "SELECT id, gesamt, created_at FROM orders WHERE id = ? AND user_id = ?");
-    mysqli_stmt_bind_param($ostmt, "ii", $orderId, $userId);
-    mysqli_stmt_execute($ostmt);
-    $order = mysqli_fetch_assoc(mysqli_stmt_get_result($ostmt));
-    if (!$order) {
-        echo json_encode(['success' => false, 'message' => 'Bestellung nicht gefunden.']);
-        exit;
+    $itemsStmt = $conn->prepare('SELECT produktname AS name, menge, einzelpreis FROM order_items WHERE order_id = ? ORDER BY id');
+    $itemsStmt->bind_param('i', $orderId);
+    $itemsStmt->execute();
+    $items = $itemsStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    foreach ($items as &$item) {
+        $item['menge'] = (int) $item['menge'];
+        $item['einzelpreis'] = (float) $item['einzelpreis'];
     }
-
-    // Kundendaten
-    $ustmt = mysqli_prepare($conn, "SELECT anrede, vorname, nachname FROM users WHERE id = ?");
-    mysqli_stmt_bind_param($ustmt, "i", $userId);
-    mysqli_stmt_execute($ustmt);
-    $kunde = mysqli_fetch_assoc(mysqli_stmt_get_result($ustmt));
-
-    // Lieferadresse
-    $astmt = mysqli_prepare($conn, "SELECT strasse, plz, ort FROM addresses WHERE user_id = ? AND address_type = 'shipping' ORDER BY is_default DESC, id ASC LIMIT 1");
-    mysqli_stmt_bind_param($astmt, "i", $userId);
-    mysqli_stmt_execute($astmt);
-    $adresse = mysqli_fetch_assoc(mysqli_stmt_get_result($astmt));
-
-    // Positionen
-    $istmt = mysqli_prepare($conn, "SELECT p.name, oi.menge, oi.einzelpreis FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = ?");
-    mysqli_stmt_bind_param($istmt, "i", $orderId);
-    mysqli_stmt_execute($istmt);
-    $ires = mysqli_stmt_get_result($istmt);
-    $items = [];
-    while ($it = mysqli_fetch_assoc($ires)) {
-        $items[] = ['name' => $it['name'], 'menge' => (int)$it['menge'], 'einzelpreis' => (float)$it['einzelpreis']];
-    }
-
-    echo json_encode([
-        'success' => true,
-        'order' => ['id' => (int)$order['id'], 'gesamt' => (float)$order['gesamt'], 'created_at' => $order['created_at']],
-        'kunde' => $kunde,
-        'adresse' => $adresse,
-        'items' => $items
-    ]);
-    exit;
+    respond(['success' => true,
+        'order' => ['id' => (int) $row['id'], 'rechnungsnummer' => $row['rechnungsnummer'], 'gesamt' => (float) $row['gesamt'], 'rabatt' => (float) $row['rabatt'], 'created_at' => $row['created_at']],
+        'kunde' => ['anrede' => $row['anrede'], 'vorname' => $row['vorname'], 'nachname' => $row['nachname']],
+        'adresse' => ['strasse' => $row['strasse'], 'plz' => $row['plz'], 'ort' => $row['ort']], 'items' => $items]);
 }
 
-echo json_encode(['success' => false, 'message' => 'Ungültige Aktion']);
+respond(['success' => false, 'message' => 'Ungültige Aktion.'], 400);
