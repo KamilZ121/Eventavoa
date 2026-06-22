@@ -1,26 +1,196 @@
 :root {
-    --eventavoa-blue: #3157a4;
-    --eventavoa-dark: #172033;
+    --eventavoa-navy: #03045e;
+    --eventavoa-dark: #0077b6;
+    --eventavoa-blue: #00b4d8;
+    --eventavoa-light: #90e0ef;
+    --eventavoa-pale: #caf0f8;
+
+    /* Bootstrap-Grundfarben auf die Eventavoa-Palette begrenzen. */
+    --bs-primary: #00b4d8;
+    --bs-primary-rgb: 0, 180, 216;
+    --bs-secondary: #0077b6;
+    --bs-secondary-rgb: 0, 119, 182;
+    --bs-success: #00b4d8;
+    --bs-success-rgb: 0, 180, 216;
+    --bs-info: #90e0ef;
+    --bs-info-rgb: 144, 224, 239;
+    --bs-warning: #90e0ef;
+    --bs-warning-rgb: 144, 224, 239;
+    --bs-danger: #0077b6;
+    --bs-danger-rgb: 0, 119, 182;
+    --bs-light: #caf0f8;
+    --bs-light-rgb: 202, 240, 248;
+    --bs-dark: #03045e;
+    --bs-dark-rgb: 3, 4, 94;
+    --bs-white: #caf0f8;
+    --bs-white-rgb: 202, 240, 248;
+    --bs-black: #03045e;
+    --bs-black-rgb: 3, 4, 94;
+    --bs-body-color: #03045e;
+    --bs-body-color-rgb: 3, 4, 94;
+    --bs-body-bg: #caf0f8;
+    --bs-body-bg-rgb: 202, 240, 248;
+    --bs-secondary-color: #0077b6;
+    --bs-secondary-color-rgb: 0, 119, 182;
+    --bs-secondary-bg: #90e0ef;
+    --bs-secondary-bg-rgb: 144, 224, 239;
+    --bs-tertiary-color: #0077b6;
+    --bs-tertiary-bg: #caf0f8;
+    --bs-border-color: #90e0ef;
+    --bs-link-color: #0077b6;
+    --bs-link-hover-color: #03045e;
+    --bs-emphasis-color: #03045e;
+    --bs-emphasis-color-rgb: 3, 4, 94;
 }
 
 body {
-    background: #f7f8fb;
+    background: var(--eventavoa-pale);
+    color: var(--eventavoa-navy);
+}
+
+a {
     color: var(--eventavoa-dark);
 }
 
-.bg-primary,
-.btn-primary {
-    background-color: var(--eventavoa-blue) !important;
-    border-color: var(--eventavoa-blue) !important;
+a:hover {
+    color: var(--eventavoa-navy);
 }
 
-.text-primary {
-    color: var(--eventavoa-blue) !important;
+.bg-primary,
+.btn-primary,
+.btn-success {
+    background-color: var(--eventavoa-blue) !important;
+    border-color: var(--eventavoa-blue) !important;
+    color: var(--eventavoa-navy) !important;
+}
+
+.bg-secondary,
+.btn-secondary {
+    background-color: var(--eventavoa-dark) !important;
+    border-color: var(--eventavoa-dark) !important;
+    color: var(--eventavoa-pale) !important;
+}
+
+.bg-dark,
+.navbar-dark {
+    background-color: var(--eventavoa-navy) !important;
+}
+
+.bg-light,
+.bg-white,
+.btn-light {
+    background-color: var(--eventavoa-pale) !important;
+    border-color: var(--eventavoa-light) !important;
+    color: var(--eventavoa-navy) !important;
+}
+
+.text-primary,
+.text-warning,
+.text-danger,
+.text-muted {
+    color: var(--eventavoa-dark) !important;
+}
+
+.text-dark {
+    color: var(--eventavoa-navy) !important;
+}
+
+.text-white {
+    color: var(--eventavoa-pale) !important;
+}
+
+.btn-outline-primary,
+.btn-outline-secondary,
+.btn-outline-danger {
+    border-color: var(--eventavoa-dark) !important;
+    color: var(--eventavoa-dark) !important;
+}
+
+.btn-outline-primary:hover,
+.btn-outline-secondary:hover,
+.btn-outline-danger:hover {
+    background-color: var(--eventavoa-dark) !important;
+    border-color: var(--eventavoa-dark) !important;
+    color: var(--eventavoa-pale) !important;
+}
+
+.alert-success,
+.alert-danger,
+.alert-warning,
+.alert-info {
+    background-color: var(--eventavoa-light);
+    border-color: var(--eventavoa-blue);
+    color: var(--eventavoa-navy);
+}
+
+.navbar-dark {
+    --bs-navbar-color: var(--eventavoa-light);
+    --bs-navbar-hover-color: var(--eventavoa-pale);
+    --bs-navbar-active-color: var(--eventavoa-pale);
+    --bs-navbar-brand-color: var(--eventavoa-pale);
+    --bs-navbar-brand-hover-color: var(--eventavoa-light);
+    --bs-navbar-toggler-border-color: var(--eventavoa-dark);
+}
+
+.card,
+.list-group-item,
+.modal-content,
+.form-control,
+.form-select,
+.table {
+    --bs-card-bg: var(--eventavoa-pale);
+    --bs-card-color: var(--eventavoa-navy);
+    --bs-list-group-bg: var(--eventavoa-pale);
+    --bs-list-group-color: var(--eventavoa-navy);
+    --bs-modal-bg: var(--eventavoa-pale);
+    --bs-table-bg: var(--eventavoa-pale);
+    --bs-table-color: var(--eventavoa-navy);
+    background-color: var(--eventavoa-pale);
+    border-color: var(--eventavoa-light);
+    color: var(--eventavoa-navy);
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--eventavoa-blue);
+    box-shadow: 0 0 0 0.25rem rgba(0, 180, 216, 0.25);
+}
+
+.btn:focus-visible,
+.form-check-input:focus {
+    border-color: var(--eventavoa-blue);
+    box-shadow: 0 0 0 0.25rem rgba(0, 180, 216, 0.25) !important;
+}
+
+.form-check-input:checked {
+    background-color: var(--eventavoa-blue);
+    border-color: var(--eventavoa-blue);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23caf0f8' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
+}
+
+.form-select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2303045e' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+}
+
+.navbar-dark .navbar-toggler-icon {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='%23caf0f8' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+
+::selection {
+    background-color: var(--eventavoa-blue);
+    color: var(--eventavoa-navy);
+}
+
+.nav-tabs {
+    --bs-nav-tabs-border-color: var(--eventavoa-light);
+    --bs-nav-tabs-link-active-color: var(--eventavoa-navy);
+    --bs-nav-tabs-link-active-bg: var(--eventavoa-pale);
+    --bs-nav-tabs-link-active-border-color: var(--eventavoa-light);
 }
 
 .card {
     border: 0;
-    box-shadow: 0 0.25rem 1rem rgba(23, 32, 51, 0.08);
+    box-shadow: 0 0.25rem 1rem rgba(3, 4, 94, 0.08);
 }
 
 .product-card {
@@ -29,7 +199,7 @@ body {
 
 .product-card:hover {
     transform: translateY(-0.25rem);
-    box-shadow: 0 0.75rem 1.5rem rgba(23, 32, 51, 0.14);
+    box-shadow: 0 0.75rem 1.5rem rgba(3, 4, 94, 0.14);
 }
 
 .account-page,
@@ -38,7 +208,6 @@ body {
 }
 
 @media print {
-    body { background: #fff; }
+    body { background: var(--eventavoa-pale); }
     .invoice-page #invoice { max-width: none; }
 }
-
