@@ -17,14 +17,149 @@ a {
 
 a:hover {
     color: var(--eventavoa-navy);
+<<<<<<<<< Temporary merge branch 1
 }
 
+.bg-primary,
+.btn-primary,
+.btn-success {
+    background-color: var(--eventavoa-blue) !important;
+    border-color: var(--eventavoa-blue) !important;
+    color: var(--eventavoa-navy) !important;
+}
+
+.bg-secondary,
+.btn-secondary {
+    background-color: var(--eventavoa-dark) !important;
+    border-color: var(--eventavoa-dark) !important;
+    color: var(--eventavoa-pale) !important;
+}
+
+.bg-dark,
+.navbar-dark {
+    background-color: var(--eventavoa-navy) !important;
+}
+
+.bg-light,
+.bg-white,
+.btn-light {
+    background-color: var(--eventavoa-pale) !important;
+    border-color: var(--eventavoa-light) !important;
+    color: var(--eventavoa-navy) !important;
+}
+
+.text-primary,
+.text-warning,
+.text-danger,
+.text-muted {
+    color: var(--eventavoa-dark) !important;
+}
+
+.text-dark {
+    color: var(--eventavoa-navy) !important;
+}
+
+.text-white {
+    color: var(--eventavoa-pale) !important;
+}
+
+.btn-outline-primary,
+.btn-outline-secondary,
+.btn-outline-danger {
+    border-color: var(--eventavoa-dark) !important;
+    color: var(--eventavoa-dark) !important;
+}
+
+.btn-outline-primary:hover,
+.btn-outline-secondary:hover,
+.btn-outline-danger:hover {
+    background-color: var(--eventavoa-dark) !important;
+    border-color: var(--eventavoa-dark) !important;
+    color: var(--eventavoa-pale) !important;
+}
+
+.alert-success,
+.alert-danger,
+.alert-warning,
+.alert-info {
+    background-color: var(--eventavoa-light);
+    border-color: var(--eventavoa-blue);
+    color: var(--eventavoa-navy);
+}
+
+.navbar-dark {
+    --bs-navbar-color: var(--eventavoa-light);
+    --bs-navbar-hover-color: var(--eventavoa-pale);
+    --bs-navbar-active-color: var(--eventavoa-pale);
+    --bs-navbar-brand-color: var(--eventavoa-pale);
+    --bs-navbar-brand-hover-color: var(--eventavoa-light);
+    --bs-navbar-toggler-border-color: var(--eventavoa-dark);
+}
+
+.card,
+.list-group-item,
+.modal-content,
+.form-control,
+.form-select,
+.table {
+    --bs-card-bg: var(--eventavoa-pale);
+    --bs-card-color: var(--eventavoa-navy);
+    --bs-list-group-bg: var(--eventavoa-pale);
+    --bs-list-group-color: var(--eventavoa-navy);
+    --bs-modal-bg: var(--eventavoa-pale);
+    --bs-table-bg: var(--eventavoa-pale);
+    --bs-table-color: var(--eventavoa-navy);
+    background-color: var(--eventavoa-pale);
+    border-color: var(--eventavoa-light);
+    color: var(--eventavoa-navy);
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--eventavoa-blue);
+    box-shadow: 0 0 0 0.25rem rgba(0, 180, 216, 0.25);
+}
+
+.btn:focus-visible,
+.form-check-input:focus {
+    border-color: var(--eventavoa-blue);
+    box-shadow: 0 0 0 0.25rem rgba(0, 180, 216, 0.25) !important;
+}
+
+.form-check-input:checked {
+    background-color: var(--eventavoa-blue);
+    border-color: var(--eventavoa-blue);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23caf0f8' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
+}
+
+.form-select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2303045e' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+}
+
+.navbar-dark .navbar-toggler-icon {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='%23caf0f8' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+
+::selection {
+    background-color: var(--eventavoa-blue);
+    color: var(--eventavoa-navy);
+}
+
+.nav-tabs {
+    --bs-nav-tabs-border-color: var(--eventavoa-light);
+    --bs-nav-tabs-link-active-color: var(--eventavoa-navy);
+    --bs-nav-tabs-link-active-bg: var(--eventavoa-pale);
+    --bs-nav-tabs-link-active-border-color: var(--eventavoa-light);
+=========
+}
+
+/* Nur grosse Flaechen und Schriftakzente verwenden die eigene Palette. */
 .bg-primary {
     background-color: var(--eventavoa-blue) !important;
 }
 
 .bg-dark {
-    background-color: var(--eventavoa-dark) !important;
+    background-color: var(--eventavoa-navy) !important;
 }
 
 .bg-light {
@@ -33,38 +168,7 @@ a:hover {
 
 .text-primary {
     color: var(--eventavoa-dark) !important;
-}
-
-.btn-primary {
-    --bs-btn-bg: var(--eventavoa-dark);
-    --bs-btn-border-color: var(--eventavoa-dark);
-    --bs-btn-hover-bg: var(--eventavoa-navy);
-    --bs-btn-hover-border-color: var(--eventavoa-navy);
-    --bs-btn-active-bg: var(--eventavoa-navy);
-    --bs-btn-active-border-color: var(--eventavoa-navy);
-    --bs-btn-disabled-bg: var(--eventavoa-blue);
-    --bs-btn-disabled-border-color: var(--eventavoa-blue);
-}
-
-.btn-outline-primary {
-    --bs-btn-color: var(--eventavoa-dark);
-    --bs-btn-border-color: var(--eventavoa-dark);
-    --bs-btn-hover-bg: var(--eventavoa-dark);
-    --bs-btn-hover-border-color: var(--eventavoa-dark);
-    --bs-btn-active-bg: var(--eventavoa-navy);
-    --bs-btn-active-border-color: var(--eventavoa-navy);
-}
-
-.form-control:focus,
-.form-select:focus,
-.form-check-input:focus {
-    border-color: var(--eventavoa-blue);
-    box-shadow: 0 0 0 0.25rem rgba(74, 168, 207, 0.2);
-}
-
-.form-check-input:checked {
-    background-color: var(--eventavoa-dark);
-    border-color: var(--eventavoa-dark);
+>>>>>>>>> Temporary merge branch 2
 }
 
 .card {
