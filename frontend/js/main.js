@@ -104,9 +104,7 @@ function loadCategories() {
             });
 
             $("#categorySelect").html(options);
-            if (response.categories.length) {
-                $("#categorySelect").val(response.categories[0].id);
-            }
+            $("#categorySelect").val("");
             loadProducts();
         },
         error: function () {
