@@ -1,9 +1,9 @@
 :root {
-    --eventavoa-navy: #03045e;
-    --eventavoa-dark: #0077b6;
-    --eventavoa-blue: #00b4d8;
-    --eventavoa-light: #90e0ef;
-    --eventavoa-pale: #caf0f8;
+    --eventavoa-navy: #16425b;
+    --eventavoa-dark: #256f91;
+    --eventavoa-blue: #4aa8cf;
+    --eventavoa-light: #d9f0f8;
+    --eventavoa-pale: #f4fbfd;
 }
 
 body {
@@ -19,13 +19,12 @@ a:hover {
     color: var(--eventavoa-navy);
 }
 
-/* Nur grosse Flaechen und Schriftakzente verwenden die eigene Palette. */
 .bg-primary {
     background-color: var(--eventavoa-blue) !important;
 }
 
 .bg-dark {
-    background-color: var(--eventavoa-navy) !important;
+    background-color: var(--eventavoa-dark) !important;
 }
 
 .bg-light {
@@ -36,9 +35,41 @@ a:hover {
     color: var(--eventavoa-dark) !important;
 }
 
+.btn-primary {
+    --bs-btn-bg: var(--eventavoa-dark);
+    --bs-btn-border-color: var(--eventavoa-dark);
+    --bs-btn-hover-bg: var(--eventavoa-navy);
+    --bs-btn-hover-border-color: var(--eventavoa-navy);
+    --bs-btn-active-bg: var(--eventavoa-navy);
+    --bs-btn-active-border-color: var(--eventavoa-navy);
+    --bs-btn-disabled-bg: var(--eventavoa-blue);
+    --bs-btn-disabled-border-color: var(--eventavoa-blue);
+}
+
+.btn-outline-primary {
+    --bs-btn-color: var(--eventavoa-dark);
+    --bs-btn-border-color: var(--eventavoa-dark);
+    --bs-btn-hover-bg: var(--eventavoa-dark);
+    --bs-btn-hover-border-color: var(--eventavoa-dark);
+    --bs-btn-active-bg: var(--eventavoa-navy);
+    --bs-btn-active-border-color: var(--eventavoa-navy);
+}
+
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+    border-color: var(--eventavoa-blue);
+    box-shadow: 0 0 0 0.25rem rgba(74, 168, 207, 0.2);
+}
+
+.form-check-input:checked {
+    background-color: var(--eventavoa-dark);
+    border-color: var(--eventavoa-dark);
+}
+
 .card {
     border: 0;
-    box-shadow: 0 0.25rem 1rem rgba(3, 4, 94, 0.08);
+    box-shadow: 0 0.25rem 1rem rgba(22, 66, 91, 0.08);
 }
 
 .product-card {
@@ -47,7 +78,7 @@ a:hover {
 
 .product-card:hover {
     transform: translateY(-0.25rem);
-    box-shadow: 0 0.75rem 1.5rem rgba(3, 4, 94, 0.14);
+    box-shadow: 0 0.75rem 1.5rem rgba(22, 66, 91, 0.14);
 }
 
 .account-page,
