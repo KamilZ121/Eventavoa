@@ -65,7 +65,7 @@ function loadPayments() {
 function updatePaymentForm() {
     const type = $("#zahl_typ").val();
     $(".card-only").toggle(type === "Kreditkarte");
-    $("#nummerLabel").text(type === "Kreditkarte" ? "Kartennummer" : type === "Bankeinzug" ? "IBAN" : "PayPal-E-Mail");
+    $("#nummerLabel").text(type === "Kreditkarte" ? "Kartennummer" : type === "Rechnung" ? "Rechnungs-E-Mail" : "PayPal-E-Mail");
 }
 
 function addPayment(event) {
@@ -99,4 +99,3 @@ function formatDate(value) { return value.substring(0, 10).split("-").reverse().
 function escapeHtml(value) { return $("<div>").text(value == null ? "" : String(value)).html(); }
 function errorMessage(xhr) { return xhr.responseJSON?.message || "Die Anfrage ist fehlgeschlagen."; }
 function showMessage(text, success) { $("#kontoMessage").removeClass("d-none alert-success alert-danger").addClass(success ? "alert-success" : "alert-danger").text(text); }
-

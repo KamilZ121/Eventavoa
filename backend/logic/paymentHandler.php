@@ -32,10 +32,10 @@ if ($action === 'addPaymentMethod') {
     $passwort = (string) ($_POST['passwort'] ?? '');
     $nummerClean = strtoupper(str_replace([' ', '-'], '', $nummer));
 
-    $valid = in_array($typ, ['Kreditkarte', 'Bankeinzug', 'PayPal'], true) && $inhaber !== '' && $passwort !== '';
+    $valid = in_array($typ, ['Kreditkarte', 'Rechnung', 'PayPal'], true) && $inhaber !== '' && $passwort !== '';
     $valid = $valid && match ($typ) {
         'Kreditkarte' => preg_match('/^\d{16}$/', $nummerClean) && preg_match('/^\d{3}$/', $pruefziffer) && preg_match('#^(0[1-9]|1[0-2])/\d{2}$#', $gueltigBis),
-        'Bankeinzug' => preg_match('/^AT\d{18}$/', $nummerClean),
+        'Rechnung' => filter_var($nummer, FILTER_VALIDATE_EMAIL),
         'PayPal' => filter_var($nummer, FILTER_VALIDATE_EMAIL),
         default => false,
     };
@@ -52,7 +52,7 @@ if ($action === 'addPaymentMethod') {
     }
 
     // CVV wird aus Sicherheitsgründen validiert, aber nicht gespeichert.
-    $storedNumber = $typ === 'PayPal' ? $nummer : $nummerClean;
+    $storedNumber = in_array($typ, ['PayPal', 'Rechnung'], true) ? $nummer : $nummerClean;
     $emptyCvv = null;
     $expiry = $typ === 'Kreditkarte' ? $gueltigBis : null;
     $stmt = $conn->prepare('INSERT INTO zahlungsmoeglichkeiten (user_id, typ, inhaber, nummer, pruefziffer, gueltig_bis) VALUES (?, ?, ?, ?, ?, ?)');

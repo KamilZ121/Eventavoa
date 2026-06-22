@@ -34,7 +34,7 @@ if ($action === 'register') {
     if ($password !== $passwordRepeat) {
         respond(['success' => false, 'message' => 'Die Passwörter stimmen nicht überein.'], 422);
     }
-    $typeMap = ['paypal' => 'PayPal', 'kreditkarte' => 'Kreditkarte', 'bankeinzug' => 'Bankeinzug'];
+    $typeMap = ['paypal' => 'PayPal', 'kreditkarte' => 'Kreditkarte', 'rechnung' => 'Rechnung'];
     if (!isset($typeMap[$paymentType])) {
         respond(['success' => false, 'message' => 'Bitte eine gültige Zahlungsart auswählen.'], 422);
     }
@@ -43,7 +43,7 @@ if ($action === 'register') {
     $paymentValid = match ($paymentType) {
         'PayPal' => filter_var($paymentIdentifier, FILTER_VALIDATE_EMAIL),
         'Kreditkarte' => preg_match('/^\d{16}$/', $cleanIdentifier),
-        'Bankeinzug' => preg_match('/^AT\d{18}$/', $cleanIdentifier),
+        'Rechnung' => filter_var($paymentIdentifier, FILTER_VALIDATE_EMAIL),
     };
     if (!$paymentValid) {
         respond(['success' => false, 'message' => 'Die Zahlungsinformation ist ungültig.'], 422);
@@ -63,7 +63,7 @@ if ($action === 'register') {
         $address = $conn->prepare("INSERT INTO addresses (user_id, address_type, strasse, plz, ort, is_default) VALUES (?, 'shipping', ?, ?, ?, 1)");
         $address->bind_param('isss', $userId, $fields['adresse'], $fields['plz'], $fields['ort']);
         $address->execute();
-        $storedIdentifier = $paymentType === 'PayPal' ? $paymentIdentifier : $cleanIdentifier;
+        $storedIdentifier = in_array($paymentType, ['PayPal', 'Rechnung'], true) ? $paymentIdentifier : $cleanIdentifier;
         $payment = $conn->prepare('INSERT INTO zahlungsmoeglichkeiten (user_id, typ, inhaber, nummer) VALUES (?, ?, ?, ?)');
         $payment->bind_param('isss', $userId, $paymentType, $paymentOwner, $storedIdentifier);
         $payment->execute();
