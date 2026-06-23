@@ -49,7 +49,6 @@ CREATE TABLE `addresses` (
   `user_id` int(10) unsigned NOT NULL,
   `address_type` enum('billing','shipping') NOT NULL,
   `strasse` varchar(100) NOT NULL,
-  `hausnummer` varchar(20) DEFAULT NULL,
   `plz` varchar(10) NOT NULL,
   `ort` varchar(50) NOT NULL,
   `land` varchar(50) NOT NULL DEFAULT 'Österreich',
@@ -63,7 +62,7 @@ CREATE TABLE `addresses` (
 
 LOCK TABLES `addresses` WRITE;
 /*!40000 ALTER TABLE `addresses` DISABLE KEYS */;
-INSERT INTO `addresses` VALUES (3,2,'billing','Höchstädtplatz','7','1200','Wien','Österreich',1,'2026-06-21 18:38:27'),(4,2,'shipping','Industriestraße','4','1220','Wien','Österreich',1,'2026-06-21 18:38:27'),(5,3,'billing','Höchstädtplatz 7',NULL,'1100','Wien','Österreich',1,'2026-06-21 18:59:16'),(6,4,'billing','Winarskistrasse 1',NULL,'1200','Wien','Österreich',1,'2026-06-21 19:05:44');
+INSERT INTO `addresses` VALUES (3,2,'billing','Höchstädtplatz 7','1200','Wien','Österreich',1,'2026-06-21 18:38:27'),(4,2,'shipping','Industriestraße 4','1220','Wien','Österreich',1,'2026-06-21 18:38:27'),(5,3,'billing','Höchstädtplatz 7','1100','Wien','Österreich',1,'2026-06-21 18:59:16'),(6,4,'billing','Winarskistrasse 1','1200','Wien','Österreich',1,'2026-06-21 19:05:44');
 /*!40000 ALTER TABLE `addresses` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `categories`;
@@ -72,15 +71,13 @@ DROP TABLE IF EXISTS `categories`;
 CREATE TABLE `categories` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(100) NOT NULL,
-  `slug` varchar(120) NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_categories_slug` (`slug`)
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `categories` WRITE;
 /*!40000 ALTER TABLE `categories` DISABLE KEYS */;
-INSERT INTO `categories` VALUES (1,'Lichttechnik','lichttechnik'),(2,'Tontechnik','tontechnik'),(3,'Bühnentechnik','buehnentechnik'),(4,'Zubehör','zubehoer');
+INSERT INTO `categories` VALUES (1,'Lichttechnik'),(2,'Tontechnik'),(3,'Bühnentechnik'),(4,'Zubehör');
 /*!40000 ALTER TABLE `categories` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `products`;
@@ -89,9 +86,7 @@ DROP TABLE IF EXISTS `products`;
 CREATE TABLE `products` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `category_id` int(10) unsigned NOT NULL,
-  `sku` varchar(50) NOT NULL,
   `name` varchar(150) NOT NULL,
-  `slug` varchar(180) NOT NULL,
   `description` text NOT NULL,
   `price` decimal(10,2) NOT NULL,
   `currency` char(3) NOT NULL DEFAULT 'EUR',
@@ -100,8 +95,6 @@ CREATE TABLE `products` (
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_products_sku` (`sku`),
-  UNIQUE KEY `uq_products_slug` (`slug`),
   KEY `idx_products_category_id` (`category_id`),
   CONSTRAINT `fk_products_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -109,7 +102,7 @@ CREATE TABLE `products` (
 
 LOCK TABLES `products` WRITE;
 /*!40000 ALTER TABLE `products` DISABLE KEYS */;
-INSERT INTO `products` VALUES (1,1,'LGT-001','LED PAR Scheinwerfer','led-par','LED PAR für Bühne.',129.90,'EUR',0.0,15,1,'2026-06-21 18:14:22'),(2,2,'AUD-001','PA Lautsprecher','pa-speaker','Aktiver Lautsprecher.',289.00,'EUR',0.0,10,1,'2026-06-21 18:14:22'),(3,4,'ACC-001','XLR Kabel','xlr-kabel','Audiokabel XLR, 10 Meter',19.90,'EUR',0.0,50,1,'2026-06-21 18:14:22');
+INSERT INTO `products` VALUES (1,1,'LED PAR Scheinwerfer','LED PAR für Bühne.',129.90,'EUR',0.0,15,1,'2026-06-21 18:14:22'),(2,2,'PA Lautsprecher','Aktiver Lautsprecher.',289.00,'EUR',0.0,10,1,'2026-06-21 18:14:22'),(3,4,'XLR Kabel','Audiokabel XLR, 10 Meter',19.90,'EUR',0.0,50,1,'2026-06-21 18:14:22');
 /*!40000 ALTER TABLE `products` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `product_images`;

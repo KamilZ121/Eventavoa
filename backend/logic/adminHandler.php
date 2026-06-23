@@ -33,10 +33,8 @@ if ($method === 'saveProduct') {
             $stmt->bind_param('issddi', $categoryId, $name, $description, $price, $rating, $id);
             $stmt->execute();
         } else {
-            $slug = slugify($name) . '-' . bin2hex(random_bytes(3));
-            $sku = 'EV-' . strtoupper(bin2hex(random_bytes(4)));
-            $stmt = $conn->prepare('INSERT INTO products (category_id, sku, name, slug, description, price, rating, stock_quantity) VALUES (?, ?, ?, ?, ?, ?, ?, 999)');
-            $stmt->bind_param('issssdd', $categoryId, $sku, $name, $slug, $description, $price, $rating);
+            $stmt = $conn->prepare('INSERT INTO products (category_id, name, description, price, rating, stock_quantity) VALUES (?, ?, ?, ?, ?, 999)');
+            $stmt->bind_param('issdd', $categoryId, $name, $description, $price, $rating);
             $stmt->execute();
             $id = $conn->insert_id;
         }
@@ -191,12 +189,6 @@ if ($method === 'createVoucher') {
 }
 
 respond(['success' => false, 'message' => 'Ungültige Aktion.'], 400);
-
-function slugify(string $value): string
-{
-    $value = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value) ?: $value;
-    return trim(strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $value)), '-');
-}
 
 function saveProductImage(mysqli $conn, int $productId, array $file, string $name): void
 {
