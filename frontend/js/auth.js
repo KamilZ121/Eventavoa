@@ -44,6 +44,7 @@ function login() {
         },
         success: function(response) {
             if (response.success) {
+                sessionStorage.setItem("eventavoaShowWelcome", "1");
                 window.location.href = loginTarget();
             } else {
                 showMessage(response.message, false);

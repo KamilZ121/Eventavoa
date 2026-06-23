@@ -25,6 +25,21 @@
     </div>
 </nav>
 
+<div class="modal fade" id="welcomeModal" tabindex="-1" aria-labelledby="welcomeModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header border-0 pb-0">
+                <h1 class="modal-title display-6" id="welcomeModalTitle">Willkommen!</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
+            </div>
+            <div class="modal-body pt-3 pb-4">
+                <p class="mb-4">Sie sind eingeloggt<span id="welcomeUser"></span>.</p>
+                <button type="button" class="btn btn-link p-0" id="welcomeLogoutBtn">Logout!</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 $(function () {
     const cartUrl = "/eventavoa/backend/logic/cartHandler.php";
@@ -41,9 +56,12 @@ $(function () {
         } else {
             $("#navKonto").removeClass("d-none");
         }
+        showWelcomeModal(status);
     });
 
-    $("#logoutBtn").on("click", function () {
+    $("#logoutBtn, #welcomeLogoutBtn").on("click", function () {
+        sessionStorage.removeItem("eventavoaWelcomeShownFor");
+        sessionStorage.removeItem("eventavoaShowWelcome");
         $.ajax({url: authUrl, method: "POST", dataType: "json", data: {method: "logout"}})
             .always(function () { window.location.href = "/eventavoa/index.html"; });
     });
@@ -58,6 +76,22 @@ $(function () {
         });
     }).on("mouseleave", function () { $("#miniCart").addClass("d-none"); });
 });
+
+function showWelcomeModal(status) {
+    if (typeof bootstrap === "undefined" || !$("#welcomeModal").length) return;
+
+    const userKey = status.benutzername || "user";
+    const forceShow = sessionStorage.getItem("eventavoaShowWelcome") === "1";
+    const alreadyShownFor = sessionStorage.getItem("eventavoaWelcomeShownFor") === userKey;
+
+    if (!forceShow && alreadyShownFor) return;
+
+    $("#welcomeUser").text(status.benutzername ? ", " + status.benutzername : "");
+    sessionStorage.setItem("eventavoaWelcomeShownFor", userKey);
+    sessionStorage.removeItem("eventavoaShowWelcome");
+
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("welcomeModal")).show();
+}
 
 function escapeHtml(value) {
     return $("<div>").text(value == null ? "" : String(value)).html();
