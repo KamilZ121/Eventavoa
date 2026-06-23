@@ -24,10 +24,10 @@ if ($method === 'register') {
     if (in_array('', $fields, true) || $password === '' || $paymentType === '' || $paymentIdentifier === '') {
         respond(['success' => false, 'message' => 'Bitte alle Pflichtfelder ausfüllen.'], 422);
     }
-    if (!in_array($fields['anrede'], ['Herr', 'Frau', 'Divers'], true)
+    if (!in_array($fields['anrede'], ['Herr', 'Frau'], true)
         || !filter_var($fields['email'], FILTER_VALIDATE_EMAIL)
         || !preg_match('/^\d{4}$/', $fields['plz'])
-        || mb_strlen($fields['benutzername']) < 3
+        || mb_strlen($fields['benutzername']) < 0
         || mb_strlen($password) < 8) {
         respond(['success' => false, 'message' => 'Bitte gültige Daten angeben. Das Passwort benötigt mindestens 8 Zeichen.'], 422);
     }
