@@ -134,8 +134,10 @@ if ($method === 'removeOrderItem') {
         $delete->bind_param('i', $itemId);
         $delete->execute();
 
-        $difference = (float) $item['menge'] * (float) $item['einzelpreis'];
-        $newSubtotal = max(0.0, (float) $order['zwischensumme'] - $difference);
+        $subtotalStmt = $conn->prepare('SELECT COALESCE(SUM(menge * einzelpreis), 0) AS zwischensumme FROM order_items WHERE order_id = ?');
+        $subtotalStmt->bind_param('i', $orderId);
+        $subtotalStmt->execute();
+        $newSubtotal = max(0.0, (float) $subtotalStmt->get_result()->fetch_assoc()['zwischensumme']);
         $oldVoucherAmount = (float) $order['gutscheinbetrag'];
         $newVoucherAmount = min($oldVoucherAmount, $newSubtotal);
         $voucherRefund = max(0.0, $oldVoucherAmount - $newVoucherAmount);
