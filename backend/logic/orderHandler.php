@@ -16,6 +16,8 @@ if ($method === 'placeOrder') {
         respond(['success' => false, 'message' => 'Ihr Warenkorb ist leer.'], 422);
     }
 
+    ensureCompleteCustomerData($conn, $userId);
+
     $paymentId = max(0, (int) ($_POST['payment_method_id'] ?? 0));
     $voucherCode = strtoupper(trim((string) ($_POST['voucher_code'] ?? '')));
     if ($paymentId === 0 && $voucherCode === '') {
@@ -126,6 +128,35 @@ if ($method === 'getOrders') {
         }
     }
     respond(['success' => true, 'orders' => $orders]);
+}
+
+function ensureCompleteCustomerData(mysqli $conn, int $userId): void
+{
+    $stmt = $conn->prepare("SELECT u.anrede, u.vorname, u.nachname, u.email, u.benutzername,
+                                   a.strasse, a.plz, a.ort
+                            FROM users u
+                            LEFT JOIN addresses a ON a.user_id = u.id
+                                AND a.address_type = 'shipping'
+                                AND a.is_default = 1
+                            WHERE u.id = ? AND u.aktiv = 1
+                            LIMIT 1");
+    $stmt->bind_param('i', $userId);
+    $stmt->execute();
+    $data = $stmt->get_result()->fetch_assoc();
+
+    if (!$data) {
+        respond(['success' => false, 'message' => 'Benutzerkonto nicht gefunden oder deaktiviert.'], 403);
+    }
+
+    foreach (['anrede', 'vorname', 'nachname', 'email', 'benutzername', 'strasse', 'plz', 'ort'] as $field) {
+        if (trim((string) ($data[$field] ?? '')) === '') {
+            respond(['success' => false, 'message' => 'Bitte vervollstaendigen Sie zuerst Ihre Kontodaten. Die Produkte bleiben im Warenkorb.'], 422);
+        }
+    }
+
+    if (!filter_var((string) $data['email'], FILTER_VALIDATE_EMAIL) || !preg_match('/^\d{4}$/', (string) $data['plz'])) {
+        respond(['success' => false, 'message' => 'Bitte pruefen Sie Ihre Kontodaten. Die Produkte bleiben im Warenkorb.'], 422);
+    }
 }
 
 if ($method === 'getInvoice') {

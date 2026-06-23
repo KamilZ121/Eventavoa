@@ -87,6 +87,13 @@ function placeOrder() {
         method: "POST",
         dataType: "json",
         data: data,
+        beforeSend: function () {
+            $("#checkoutMessage").addClass("d-none").removeClass("alert-danger").text("");
+            $("#orderBtn").prop("disabled", true);
+        },
+        complete: function () {
+            $("#orderBtn").prop("disabled", false);
+        },
         success: function (res) {
             // wenn nicht eingeloggt dann redirect
             if (res.needsLogin) {
@@ -113,7 +120,7 @@ function placeOrder() {
                     </div>`);
                 $("#cartCount").text(0);
             } else {
-                alert(res.message);
+                showCheckoutError(res.message);
             }
         },
         error: function (xhr) {
@@ -123,9 +130,17 @@ function placeOrder() {
                     encodeURIComponent("/eventavoa/frontend/sites/cart.html");
                 return;
             }
-            alert(res.message || "Bestellung konnte nicht abgeschlossen werden.");
+            showCheckoutError(res.message || "Bestellung konnte nicht abgeschlossen werden.");
         }
     });
+}
+
+function showCheckoutError(message) {
+    const profileLink = '<a class="alert-link" href="/eventavoa/frontend/sites/konto.html">Kontodaten bearbeiten</a>';
+    $("#checkoutMessage")
+        .removeClass("d-none")
+        .addClass("alert-danger")
+        .html(`${escapeHtml(message)} ${profileLink}`);
 }
 
 // Warenkorb als Liste rendern
@@ -156,6 +171,7 @@ function renderCart(cart) {
 
     $("#cartContent").html(`
         <div class="list-group mb-4">${rows}</div>
+        <div id="checkoutMessage" class="alert d-none" role="alert"></div>
         <div id="paymentChoice" class="mb-3"></div>
         <div class="d-flex justify-content-between align-items-center">
             <h4 class="mb-0">Gesamt: ${cart.total.toFixed(2)} €</h4>
