@@ -80,6 +80,11 @@ $(function () {
 function showWelcomeModal(status) {
     if (typeof bootstrap === "undefined" || !$("#welcomeModal").length) return;
 
+    const modalElement = document.getElementById("welcomeModal");
+    if (modalElement.parentElement && modalElement.parentElement.id === "header") {
+        document.body.appendChild(modalElement);
+    }
+
     const userKey = status.benutzername || "user";
     const forceShow = sessionStorage.getItem("eventavoaShowWelcome") === "1";
     const alreadyShownFor = sessionStorage.getItem("eventavoaWelcomeShownFor") === userKey;
@@ -90,7 +95,7 @@ function showWelcomeModal(status) {
     sessionStorage.setItem("eventavoaWelcomeShownFor", userKey);
     sessionStorage.removeItem("eventavoaShowWelcome");
 
-    bootstrap.Modal.getOrCreateInstance(document.getElementById("welcomeModal")).show();
+    bootstrap.Modal.getOrCreateInstance(modalElement).show();
 }
 
 function escapeHtml(value) {
