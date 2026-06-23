@@ -2,13 +2,14 @@ const AUTH_URL = "/eventavoa/backend/logic/authHandler.php";
 const ORDER_URL = "/eventavoa/backend/logic/orderHandler.php";
 const PAYMENT_URL = "/eventavoa/backend/logic/paymentHandler.php";
 let passwordModal;
+let pendingPasswordAction = null;
 
 $(document).ready(function () {
     $("#header").load("/eventavoa/frontend/sites/header.html");
     $("#footer").load("/eventavoa/frontend/sites/footer.html");
     $("#profileForm").submit(openPasswordDialog);
-    $("#confirmProfile").click(saveProfile);
-    $("#paymentForm").submit(addPayment);
+    $("#confirmPassword").click(confirmPasswordAction);
+    $("#paymentForm").submit(openPaymentPasswordDialog);
     $("#zahl_typ").change(updatePaymentForm);
     $("#paymentList").on("click", ".delete-payment", deletePayment);
     $("#ordersContent").on("click", ".open-invoice", openInvoice);
@@ -32,14 +33,21 @@ function loadProfile() {
 
 function openPasswordDialog(event) {
     event.preventDefault();
+    pendingPasswordAction = saveProfile;
     $("#modalPasswort, #modalError").val("").text("");
     passwordModal = new bootstrap.Modal("#passwordModal");
     passwordModal.show();
 }
 
-function saveProfile() {
+function confirmPasswordAction() {
     const password = $("#modalPasswort").val();
     if (!password) { $("#modalError").text("Bitte Passwort eingeben."); return; }
+    if (typeof pendingPasswordAction === "function") {
+        pendingPasswordAction(password);
+    }
+}
+
+function saveProfile(password) {
     const data = {method: "updateProfile", passwort: password};
     ["anrede", "vorname", "nachname", "email", "benutzername", "adresse", "plz", "ort"].forEach(function (field) {
         data[field] = $("#" + field).val();
@@ -67,13 +75,20 @@ function updatePaymentForm() {
     $("#nummerLabel").text(type === "Kreditkarte" ? "Kartennummer" : type === "Rechnung" ? "Rechnungs-E-Mail" : "PayPal-E-Mail");
 }
 
-function addPayment(event) {
+function openPaymentPasswordDialog(event) {
     event.preventDefault();
+    pendingPasswordAction = addPayment;
+    $("#modalPasswort, #modalError").val("").text("");
+    passwordModal = new bootstrap.Modal("#passwordModal");
+    passwordModal.show();
+}
+
+function addPayment(password) {
     const data = {method: "addPaymentMethod", typ: $("#zahl_typ").val(), inhaber: $("#zahl_inhaber").val(),
-        nummer: $("#zahl_nummer").val(), gueltig_bis: $("#zahl_gueltig").val(), pruefziffer: $("#zahl_pruefziffer").val(), passwort: $("#zahl_passwort").val()};
+        nummer: $("#zahl_nummer").val(), gueltig_bis: $("#zahl_gueltig").val(), pruefziffer: $("#zahl_pruefziffer").val(), passwort: password};
     $.ajax({type: "POST", url: PAYMENT_URL, data: data, dataType: "json"})
-        .done(function () { $("#paymentForm")[0].reset(); updatePaymentForm(); loadPayments(); })
-        .fail(function (xhr) { showMessage(errorMessage(xhr), false); });
+        .done(function () { passwordModal.hide(); $("#paymentForm")[0].reset(); updatePaymentForm(); loadPayments(); showMessage("Zahlungsmöglichkeit gespeichert.", true); })
+        .fail(function (xhr) { $("#modalError").text(errorMessage(xhr)); });
 }
 
 function deletePayment() {
