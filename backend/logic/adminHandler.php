@@ -137,8 +137,8 @@ if ($method === 'removeOrderItem') {
         $difference = (float) $item['menge'] * (float) $item['einzelpreis'];
         $newSubtotal = max(0.0, (float) $order['zwischensumme'] - $difference);
         $oldVoucherAmount = (float) $order['gutscheinbetrag'];
-        $voucherRefund = min($difference, $oldVoucherAmount);
-        $newVoucherAmount = max(0.0, $oldVoucherAmount - $voucherRefund);
+        $newVoucherAmount = min($oldVoucherAmount, $newSubtotal);
+        $voucherRefund = max(0.0, $oldVoucherAmount - $newVoucherAmount);
         $newTotal = max(0.0, $newSubtotal - $newVoucherAmount);
 
         if ($voucherRefund > 0 && $order['gutschein_id'] !== null) {

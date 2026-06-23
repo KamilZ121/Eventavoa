@@ -117,8 +117,8 @@ if ($method === 'getOrders') {
     foreach ($orders as &$order) {
         $order['id'] = (int) $order['id'];
         $order['zwischensumme'] = (float) $order['zwischensumme'];
-        $order['gutscheinbetrag'] = (float) $order['gutscheinbetrag'];
-        $order['gesamt'] = (float) $order['gesamt'];
+        $order['gutscheinbetrag'] = min((float) $order['gutscheinbetrag'], $order['zwischensumme']);
+        $order['gesamt'] = max(0.0, $order['zwischensumme'] - $order['gutscheinbetrag']);
         $itemStmt->bind_param('i', $order['id']);
         $itemStmt->execute();
         $order['items'] = $itemStmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -180,8 +180,11 @@ if ($method === 'getInvoice') {
         $item['menge'] = (int) $item['menge'];
         $item['einzelpreis'] = (float) $item['einzelpreis'];
     }
+    $subtotal = (float) $row['zwischensumme'];
+    $voucherAmount = min((float) $row['gutscheinbetrag'], $subtotal);
+    $total = max(0.0, $subtotal - $voucherAmount);
     respond(['success' => true,
-        'order' => ['id' => (int) $row['id'], 'rechnungsnummer' => $row['rechnungsnummer'], 'zwischensumme' => (float) $row['zwischensumme'], 'gutscheinbetrag' => (float) $row['gutscheinbetrag'], 'gesamt' => (float) $row['gesamt'], 'created_at' => $row['created_at']],
+        'order' => ['id' => (int) $row['id'], 'rechnungsnummer' => $row['rechnungsnummer'], 'zwischensumme' => $subtotal, 'gutscheinbetrag' => $voucherAmount, 'gesamt' => $total, 'created_at' => $row['created_at']],
         'kunde' => ['anrede' => $row['anrede'], 'vorname' => $row['vorname'], 'nachname' => $row['nachname']],
         'adresse' => ['strasse' => $row['strasse'], 'plz' => $row['plz'], 'ort' => $row['ort']], 'items' => $items]);
 }
