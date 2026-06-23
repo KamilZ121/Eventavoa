@@ -7,10 +7,10 @@ bootstrapApi();
 
 $dataHandler = new DataHandler();
 $conn = $dataHandler->getConnection();
-$action = requestAction();
+$method = requestMethod();
 $userId = requireLogin();
 
-if ($action === 'placeOrder') {
+if ($method === 'placeOrder') {
     $cart = $_SESSION['cart'] ?? [];
     if (!$cart) {
         respond(['success' => false, 'message' => 'Ihr Warenkorb ist leer.'], 422);
@@ -52,7 +52,7 @@ if ($action === 'placeOrder') {
     $conn->begin_transaction();
     try {
         $voucherId = null;
-        $discount = 0.0;
+        $voucherAmount = 0.0;
         if ($voucherCode !== '') {
             $voucherStmt = $conn->prepare('SELECT id, remaining_value FROM vouchers WHERE code = ? AND expires_at >= CURRENT_DATE AND remaining_value > 0 FOR UPDATE');
             $voucherStmt->bind_param('s', $voucherCode);
@@ -62,19 +62,19 @@ if ($action === 'placeOrder') {
                 throw new DomainException('Der Gutschein ist ungültig, abgelaufen oder aufgebraucht.');
             }
             $voucherId = (int) $voucher['id'];
-            $discount = min($subtotal, (float) $voucher['remaining_value']);
-            $remaining = (float) $voucher['remaining_value'] - $discount;
+            $voucherAmount = min($subtotal, (float) $voucher['remaining_value']);
+            $remaining = (float) $voucher['remaining_value'] - $voucherAmount;
             $updateVoucher = $conn->prepare('UPDATE vouchers SET remaining_value = ? WHERE id = ?');
             $updateVoucher->bind_param('di', $remaining, $voucherId);
             $updateVoucher->execute();
         }
-        $total = max(0, $subtotal - $discount);
+        $total = max(0, $subtotal - $voucherAmount);
         if ($total > 0 && $paymentId === 0) {
             throw new DomainException('Der Gutschein deckt nicht den Gesamtbetrag. Bitte zusätzlich eine Zahlungsart wählen.');
         }
         $paymentValue = $paymentId ?: null;
-        $insert = $conn->prepare('INSERT INTO orders (user_id, zahlung_id, gutschein_id, zwischensumme, rabatt, gesamt) VALUES (?, ?, ?, ?, ?, ?)');
-        $insert->bind_param('iiiddd', $userId, $paymentValue, $voucherId, $subtotal, $discount, $total);
+        $insert = $conn->prepare('INSERT INTO orders (user_id, zahlung_id, gutschein_id, zwischensumme, gutscheinbetrag, gesamt) VALUES (?, ?, ?, ?, ?, ?)');
+        $insert->bind_param('iiiddd', $userId, $paymentValue, $voucherId, $subtotal, $voucherAmount, $total);
         $insert->execute();
         $orderId = $conn->insert_id;
         $invoice = 'RE-' . date('Y') . '-' . str_pad((string) $orderId, 6, '0', STR_PAD_LEFT);
@@ -89,7 +89,14 @@ if ($action === 'placeOrder') {
         }
         $conn->commit();
         $_SESSION['cart'] = [];
-        respond(['success' => true, 'orderId' => $orderId, 'invoiceNumber' => $invoice, 'gesamt' => $total]);
+        respond([
+            'success' => true,
+            'orderId' => $orderId,
+            'invoiceNumber' => $invoice,
+            'zwischensumme' => $subtotal,
+            'gutscheinbetrag' => $voucherAmount,
+            'gesamt' => $total
+        ]);
     } catch (DomainException $exception) {
         $conn->rollback();
         respond(['success' => false, 'message' => $exception->getMessage()], 422);
@@ -99,14 +106,16 @@ if ($action === 'placeOrder') {
     }
 }
 
-if ($action === 'getOrders') {
-    $stmt = $conn->prepare('SELECT id, rechnungsnummer, gesamt, status, created_at FROM orders WHERE user_id = ? ORDER BY created_at ASC, id ASC');
+if ($method === 'getOrders') {
+    $stmt = $conn->prepare('SELECT id, rechnungsnummer, zwischensumme, gutscheinbetrag, gesamt, status, created_at FROM orders WHERE user_id = ? ORDER BY created_at ASC, id ASC');
     $stmt->bind_param('i', $userId);
     $stmt->execute();
     $orders = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $itemStmt = $conn->prepare('SELECT produktname AS name, menge, einzelpreis FROM order_items WHERE order_id = ? ORDER BY id');
     foreach ($orders as &$order) {
         $order['id'] = (int) $order['id'];
+        $order['zwischensumme'] = (float) $order['zwischensumme'];
+        $order['gutscheinbetrag'] = (float) $order['gutscheinbetrag'];
         $order['gesamt'] = (float) $order['gesamt'];
         $itemStmt->bind_param('i', $order['id']);
         $itemStmt->execute();
@@ -119,9 +128,9 @@ if ($action === 'getOrders') {
     respond(['success' => true, 'orders' => $orders]);
 }
 
-if ($action === 'getInvoice') {
+if ($method === 'getInvoice') {
     $orderId = (int) ($_GET['order_id'] ?? 0);
-    $stmt = $conn->prepare("SELECT o.id, o.rechnungsnummer, o.zwischensumme, o.rabatt, o.gesamt, o.created_at,
+    $stmt = $conn->prepare("SELECT o.id, o.rechnungsnummer, o.zwischensumme, o.gutscheinbetrag, o.gesamt, o.created_at,
                                   u.anrede, u.vorname, u.nachname, a.strasse, a.plz, a.ort
                            FROM orders o JOIN users u ON u.id = o.user_id
                            LEFT JOIN addresses a ON a.user_id = u.id AND a.address_type = 'shipping' AND a.is_default = 1
@@ -141,7 +150,7 @@ if ($action === 'getInvoice') {
         $item['einzelpreis'] = (float) $item['einzelpreis'];
     }
     respond(['success' => true,
-        'order' => ['id' => (int) $row['id'], 'rechnungsnummer' => $row['rechnungsnummer'], 'gesamt' => (float) $row['gesamt'], 'rabatt' => (float) $row['rabatt'], 'created_at' => $row['created_at']],
+        'order' => ['id' => (int) $row['id'], 'rechnungsnummer' => $row['rechnungsnummer'], 'zwischensumme' => (float) $row['zwischensumme'], 'gutscheinbetrag' => (float) $row['gutscheinbetrag'], 'gesamt' => (float) $row['gesamt'], 'created_at' => $row['created_at']],
         'kunde' => ['anrede' => $row['anrede'], 'vorname' => $row['vorname'], 'nachname' => $row['nachname']],
         'adresse' => ['strasse' => $row['strasse'], 'plz' => $row['plz'], 'ort' => $row['ort']], 'items' => $items]);
 }

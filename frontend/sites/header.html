@@ -8,9 +8,7 @@
             <ul class="navbar-nav me-auto">
                 <li class="nav-item"><a class="nav-link" href="/eventavoa/index.html">Home</a></li>
                 <li class="nav-item" id="navProdukte"><a class="nav-link" href="/eventavoa/index.html#products">Produkte</a></li>
-                <li class="nav-item admin-only d-none"><a class="nav-link" href="/eventavoa/frontend/sites/admin.html#products">Produkte bearbeiten</a></li>
-                <li class="nav-item admin-only d-none"><a class="nav-link" href="/eventavoa/frontend/sites/admin.html#customers">Kunden bearbeiten</a></li>
-                <li class="nav-item admin-only d-none"><a class="nav-link" href="/eventavoa/frontend/sites/admin.html#vouchers">Gutscheine verwalten</a></li>
+                <li class="nav-item admin-only d-none"><a class="nav-link" href="/eventavoa/frontend/sites/admin.html">Adminbereich</a></li>
                 <li class="nav-item position-relative" id="cartWidget">
                     <a class="nav-link" id="cartLink" href="/eventavoa/frontend/sites/cart.html">Warenkorb <span id="cartCount" class="badge bg-primary">0</span></a>
                     <div id="miniCart" class="shadow rounded bg-white text-dark p-3 position-absolute end-0 d-none" style="min-width:280px;z-index:1050">
@@ -32,7 +30,7 @@ $(function () {
     const cartUrl = "/eventavoa/backend/logic/cartHandler.php";
     const authUrl = "/eventavoa/backend/logic/authHandler.php";
 
-    $.ajax({url: authUrl, dataType: "json", cache: false, data: {action: "status"}}).done(function (status) {
+    $.ajax({url: authUrl, dataType: "json", cache: false, data: {method: "status"}}).done(function (status) {
         if (!status.loggedIn) return;
         $("#navLogin").addClass("d-none");
         $("#navLogout").removeClass("d-none");
@@ -46,12 +44,12 @@ $(function () {
     });
 
     $("#logoutBtn").on("click", function () {
-        $.ajax({url: authUrl, method: "POST", dataType: "json", data: {action: "logout"}})
+        $.ajax({url: authUrl, method: "POST", dataType: "json", data: {method: "logout"}})
             .always(function () { window.location.href = "/eventavoa/index.html"; });
     });
 
     $("#cartWidget").on("mouseenter", function () {
-        $.ajax({url: cartUrl, dataType: "json", data: {action: "getCart"}}).done(function (cart) {
+        $.ajax({url: cartUrl, dataType: "json", data: {method: "getCart"}}).done(function (cart) {
             let html = cart.items.length ? cart.items.map(item =>
                 `<div class="d-flex justify-content-between mb-2"><span>${item.qty}× ${escapeHtml(item.name)}</span><span>${item.line_total.toFixed(2)} €</span></div>`
             ).join("") + `<hr><strong>Gesamt: ${cart.total.toFixed(2)} €</strong>` : '<p class="mb-0 text-muted">Ihr Warenkorb ist leer.</p>';

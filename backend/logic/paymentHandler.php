@@ -7,10 +7,10 @@ bootstrapApi();
 
 $dataHandler = new DataHandler();
 $conn = $dataHandler->getConnection();
-$action = requestAction();
+$method = requestMethod();
 $userId = requireLogin();
 
-if ($action === 'getPaymentMethods') {
+if ($method === 'getPaymentMethods') {
     $stmt = $conn->prepare('SELECT id, typ, inhaber, nummer FROM zahlungsmoeglichkeiten WHERE user_id = ? ORDER BY id DESC');
     $stmt->bind_param('i', $userId);
     $stmt->execute();
@@ -23,7 +23,7 @@ if ($action === 'getPaymentMethods') {
     respond(['success' => true, 'methods' => $methods]);
 }
 
-if ($action === 'addPaymentMethod') {
+if ($method === 'addPaymentMethod') {
     $typ = trim((string) ($_POST['typ'] ?? ''));
     $inhaber = trim((string) ($_POST['inhaber'] ?? ''));
     $nummer = trim((string) ($_POST['nummer'] ?? ''));
@@ -61,7 +61,7 @@ if ($action === 'addPaymentMethod') {
     respond(['success' => true, 'id' => $conn->insert_id]);
 }
 
-if ($action === 'deletePaymentMethod') {
+if ($method === 'deletePaymentMethod') {
     $id = (int) ($_POST['id'] ?? 0);
     $stmt = $conn->prepare('DELETE FROM zahlungsmoeglichkeiten WHERE id = ? AND user_id = ?');
     $stmt->bind_param('ii', $id, $userId);

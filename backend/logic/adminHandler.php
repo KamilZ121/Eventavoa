@@ -8,15 +8,15 @@ requireAdmin();
 
 $dataHandler = new DataHandler();
 $conn = $dataHandler->getConnection();
-$action = requestAction();
+$method = requestMethod();
 
-if ($action === 'getProducts') {
+if ($method === 'getProducts') {
     $result = $conn->query("SELECT p.id, p.category_id, p.name, p.description, p.price, p.rating, p.is_active, pi.image_path
                             FROM products p LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_primary = 1 ORDER BY p.id DESC");
     respond(['success' => true, 'products' => $result->fetch_all(MYSQLI_ASSOC)]);
 }
 
-if ($action === 'saveProduct') {
+if ($method === 'saveProduct') {
     $id = max(0, (int) ($_POST['id'] ?? 0));
     $categoryId = (int) ($_POST['category_id'] ?? 0);
     $name = trim((string) ($_POST['name'] ?? ''));
@@ -51,7 +51,7 @@ if ($action === 'saveProduct') {
     }
 }
 
-if ($action === 'setProductActive') {
+if ($method === 'setProductActive') {
     $id = (int) ($_POST['id'] ?? 0);
     $active = (int) (bool) ($_POST['active'] ?? false);
     $stmt = $conn->prepare('UPDATE products SET is_active = ? WHERE id = ?');
@@ -60,7 +60,36 @@ if ($action === 'setProductActive') {
     respond(['success' => true]);
 }
 
-if ($action === 'getCustomers') {
+if ($method === 'deleteProduct') {
+    $id = max(0, (int) ($_POST['id'] ?? 0));
+    if ($id === 0) {
+        respond(['success' => false, 'message' => 'Ungültiges Produkt.'], 422);
+    }
+
+    $imageStmt = $conn->prepare('SELECT image_path FROM product_images WHERE product_id = ?');
+    $imageStmt->bind_param('i', $id);
+    $imageStmt->execute();
+    $imagePaths = array_column($imageStmt->get_result()->fetch_all(MYSQLI_ASSOC), 'image_path');
+
+    $delete = $conn->prepare('DELETE FROM products WHERE id = ?');
+    $delete->bind_param('i', $id);
+    $delete->execute();
+    if ($delete->affected_rows === 0) {
+        respond(['success' => false, 'message' => 'Produkt nicht gefunden.'], 404);
+    }
+
+    $productImageDirectory = realpath(__DIR__ . '/../../frontend/assets/products');
+    foreach ($imagePaths as $imagePath) {
+        $file = realpath(__DIR__ . '/../../frontend/' . $imagePath);
+        if ($file && $productImageDirectory && str_starts_with($file, $productImageDirectory . DIRECTORY_SEPARATOR)) {
+            @unlink($file);
+        }
+    }
+
+    respond(['success' => true]);
+}
+
+if ($method === 'getCustomers') {
     $result = $conn->query("SELECT u.id, u.vorname, u.nachname, u.email, u.benutzername, u.aktiv,
                                   COUNT(DISTINCT o.id) AS orders_count
                            FROM users u LEFT JOIN orders o ON o.user_id = u.id
@@ -68,7 +97,7 @@ if ($action === 'getCustomers') {
     respond(['success' => true, 'customers' => $result->fetch_all(MYSQLI_ASSOC)]);
 }
 
-if ($action === 'setCustomerActive') {
+if ($method === 'setCustomerActive') {
     $id = (int) ($_POST['id'] ?? 0);
     $active = (int) (bool) ($_POST['active'] ?? false);
     $stmt = $conn->prepare("UPDATE users SET aktiv = ?, remember_token = IF(? = 0, NULL, remember_token) WHERE id = ? AND rolle = 'user'");
@@ -77,7 +106,7 @@ if ($action === 'setCustomerActive') {
     respond(['success' => true]);
 }
 
-if ($action === 'getCustomerOrders') {
+if ($method === 'getCustomerOrders') {
     $customerId = (int) ($_GET['customer_id'] ?? 0);
     $stmt = $conn->prepare('SELECT o.id order_id, o.created_at, o.gesamt, oi.id item_id, oi.produktname, oi.menge, oi.einzelpreis FROM orders o JOIN order_items oi ON oi.order_id = o.id WHERE o.user_id = ? ORDER BY o.created_at DESC, oi.id');
     $stmt->bind_param('i', $customerId);
@@ -85,7 +114,7 @@ if ($action === 'getCustomerOrders') {
     respond(['success' => true, 'items' => $stmt->get_result()->fetch_all(MYSQLI_ASSOC)]);
 }
 
-if ($action === 'removeOrderItem') {
+if ($method === 'removeOrderItem') {
     $itemId = (int) ($_POST['item_id'] ?? 0);
     $conn->begin_transaction();
     try {
@@ -110,19 +139,22 @@ if ($action === 'removeOrderItem') {
     }
 }
 
-if ($action === 'getVouchers') {
+if ($method === 'getVouchers') {
     $result = $conn->query("SELECT id, code, initial_value, remaining_value, expires_at,
                                   CASE WHEN expires_at < CURRENT_DATE THEN 'abgelaufen' WHEN remaining_value <= 0 THEN 'eingelöst' ELSE 'aktiv' END status
                            FROM vouchers ORDER BY created_at DESC");
     respond(['success' => true, 'vouchers' => $result->fetch_all(MYSQLI_ASSOC)]);
 }
 
-if ($action === 'createVoucher') {
+if ($method === 'createVoucher') {
     $value = filter_var($_POST['value'] ?? null, FILTER_VALIDATE_FLOAT);
     $expires = trim((string) ($_POST['expires_at'] ?? ''));
     $date = DateTimeImmutable::createFromFormat('Y-m-d', $expires);
-    if ($value === false || $value <= 0 || !$date || $date->format('Y-m-d') !== $expires || $date < new DateTimeImmutable('today')) {
-        respond(['success' => false, 'message' => 'Wert und Ablaufdatum sind ungültig.'], 422);
+    if ($value === false || $value <= 0) {
+        respond(['success' => false, 'message' => 'Der Wert ist ungültig.'], 422);
+    }
+    if (!$date || $date->format('Y-m-d') !== $expires || $date < new DateTimeImmutable('today')) {
+        respond(['success' => false, 'message' => 'Das Ablaufdatum ist ungültig.'], 422);
     }
     do {
         $code = substr(str_shuffle('ABCDEFGHJKLMNPQRSTUVWXYZ23456789'), 0, 5);

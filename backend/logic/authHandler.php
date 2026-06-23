@@ -8,9 +8,9 @@ bootstrapApi();
 $dataHandler = new DataHandler();
 $conn = $dataHandler->getConnection();
 restoreRememberedLogin($dataHandler);
-$action = requestAction();
+$method = requestMethod();
 
-if ($action === 'register') {
+if ($method === 'register') {
     $fields = [];
     foreach (['anrede', 'vorname', 'nachname', 'adresse', 'plz', 'ort', 'email', 'benutzername'] as $name) {
         $fields[$name] = trim((string) ($_POST[$name] ?? ''));
@@ -74,7 +74,7 @@ if ($action === 'register') {
         respond(['success' => false, 'message' => 'Registrierung konnte nicht gespeichert werden.'], 500);
     }
 }
-if ($action === 'login') {
+if ($method === 'login') {
     $identifier = trim((string) ($_POST['benutzername'] ?? ''));
     $password = (string) ($_POST['passwort'] ?? '');
     $user = $dataHandler->getUserForLogin($identifier);
@@ -95,13 +95,13 @@ if ($action === 'login') {
     respond(['success' => true, 'rolle' => $user['rolle']]);
 }
 
-if ($action === 'status') {
+if ($method === 'status') {
     respond(empty($_SESSION['user_id'])
         ? ['success' => true, 'loggedIn' => false]
         : ['success' => true, 'loggedIn' => true, 'benutzername' => $_SESSION['benutzername'], 'rolle' => $_SESSION['rolle']]);
 }
 
-if ($action === 'logout') {
+if ($method === 'logout') {
     if (!empty($_SESSION['user_id'])) {
         $userId = (int) $_SESSION['user_id'];
         $stmt = $conn->prepare('UPDATE users SET remember_token = NULL WHERE id = ?');
@@ -114,12 +114,12 @@ if ($action === 'logout') {
     respond(['success' => true]);
 }
 
-if ($action === 'getProfile') {
+if ($method === 'getProfile') {
     $userId = requireLogin();
     respond(['success' => true, 'user' => $dataHandler->getProfile($userId)]);
 }
 
-if ($action === 'updateProfile') {
+if ($method === 'updateProfile') {
     $userId = requireLogin();
     $values = [];
     foreach (['anrede', 'vorname', 'nachname', 'email', 'benutzername', 'adresse', 'plz', 'ort'] as $field) {

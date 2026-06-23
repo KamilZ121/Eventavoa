@@ -37,7 +37,7 @@ function loadCart() {
         url: CART_URL,
         method: "GET",
         dataType: "json",
-        data: { action: "getCart" },
+        data: { method: "getCart" },
         success: function (cart) {
             renderCart(cart);
             $("#cartCount").text(cart.count);
@@ -51,7 +51,7 @@ function updateQty(productId, qty) {
         url: CART_URL,
         method: "POST",
         dataType: "json",
-        data: { action: "updateCart", product_id: productId, qty: qty },
+        data: { method: "updateCart", product_id: productId, qty: qty },
         success: function (cart) {
             renderCart(cart);
             $("#cartCount").text(cart.count);
@@ -65,7 +65,7 @@ function removeFromCart(productId) {
         url: CART_URL,
         method: "POST",
         dataType: "json",
-        data: { action: "removeFromCart", product_id: productId },
+        data: { method: "removeFromCart", product_id: productId },
         success: function (cart) {
             renderCart(cart);
             $("#cartCount").text(cart.count);
@@ -76,7 +76,7 @@ function removeFromCart(productId) {
 // Bestellen
 function placeOrder() {
     const paymentSelect = document.getElementById("paymentSelect");
-    const data = { action: "placeOrder" };
+    const data = { method: "placeOrder" };
     if (paymentSelect) {
         data.payment_method_id = paymentSelect.value;
     }
@@ -95,10 +95,17 @@ function placeOrder() {
                 return;
             }
             if (res.success) {
+                const voucherDetails = res.gutscheinbetrag > 0
+                    ? `<div class="mt-2">
+                           Zwischensumme: ${res.zwischensumme.toFixed(2)} €<br>
+                           Gutschein: −${res.gutscheinbetrag.toFixed(2)} €<br>
+                           <strong>Zu zahlen: ${res.gesamt.toFixed(2)} €</strong>
+                       </div>`
+                    : `<div class="mt-2"><strong>Gesamt: ${res.gesamt.toFixed(2)} €</strong></div>`;
                 $("#cartContent").html(`
                     <div class="alert alert-success">
-                        Vielen Dank! Ihre Bestellung Nr. ${res.orderId} über
-                        ${res.gesamt.toFixed(2)} € wurde aufgenommen.
+                        Vielen Dank! Ihre Bestellung Nr. ${res.orderId} wurde aufgenommen.
+                        ${voucherDetails}
                     </div>
                     <div class="d-flex flex-wrap gap-2">
                         <a class="btn btn-primary" href="/eventavoa/index.html">Zum Shop</a>
@@ -165,7 +172,7 @@ function loadPaymentChoices() {
         method: "GET",
         dataType: "json",
         data: {
-            action: "getPaymentMethods"
+            method: "getPaymentMethods"
         },
         success: function (res) {
             if (!res.success) {
@@ -210,7 +217,7 @@ function updateCartBadge() {
         url: CART_URL,
         method: "GET",
         dataType: "json",
-        data: { action: "getCartCount" },
+        data: { method: "getCartCount" },
         success: function (response) {
             $("#cartCount").text(response.count);
         }

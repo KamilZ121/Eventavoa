@@ -17,7 +17,7 @@ $(document).ready(function () {
 });
 
 function loadProfile() {
-    $.ajax({type: "GET", url: AUTH_URL, data: {action: "getProfile"}, dataType: "json"})
+    $.ajax({type: "GET", url: AUTH_URL, data: {method: "getProfile"}, dataType: "json"})
         .done(function (response) {
             const user = response.user;
             ["anrede", "vorname", "nachname", "email", "benutzername", "adresse", "plz", "ort"].forEach(function (field) {
@@ -40,7 +40,7 @@ function openPasswordDialog(event) {
 function saveProfile() {
     const password = $("#modalPasswort").val();
     if (!password) { $("#modalError").text("Bitte Passwort eingeben."); return; }
-    const data = {action: "updateProfile", passwort: password};
+    const data = {method: "updateProfile", passwort: password};
     ["anrede", "vorname", "nachname", "email", "benutzername", "adresse", "plz", "ort"].forEach(function (field) {
         data[field] = $("#" + field).val();
     });
@@ -50,7 +50,7 @@ function saveProfile() {
 }
 
 function loadPayments() {
-    $.ajax({type: "GET", url: PAYMENT_URL, data: {action: "getPaymentMethods"}, dataType: "json"})
+    $.ajax({type: "GET", url: PAYMENT_URL, data: {method: "getPaymentMethods"}, dataType: "json"})
         .done(function (response) {
             if (!response.methods.length) { $("#paymentList").html('<p class="text-muted">Noch keine Zahlungsmöglichkeit hinterlegt.</p>'); return; }
             let html = '<div class="list-group">';
@@ -69,7 +69,7 @@ function updatePaymentForm() {
 
 function addPayment(event) {
     event.preventDefault();
-    const data = {action: "addPaymentMethod", typ: $("#zahl_typ").val(), inhaber: $("#zahl_inhaber").val(),
+    const data = {method: "addPaymentMethod", typ: $("#zahl_typ").val(), inhaber: $("#zahl_inhaber").val(),
         nummer: $("#zahl_nummer").val(), gueltig_bis: $("#zahl_gueltig").val(), pruefziffer: $("#zahl_pruefziffer").val(), passwort: $("#zahl_passwort").val()};
     $.ajax({type: "POST", url: PAYMENT_URL, data: data, dataType: "json"})
         .done(function () { $("#paymentForm")[0].reset(); updatePaymentForm(); loadPayments(); })
@@ -77,16 +77,17 @@ function addPayment(event) {
 }
 
 function deletePayment() {
-    $.ajax({type: "POST", url: PAYMENT_URL, data: {action: "deletePaymentMethod", id: $(this).data("id")}, dataType: "json"}).done(loadPayments);
+    $.ajax({type: "POST", url: PAYMENT_URL, data: {method: "deletePaymentMethod", id: $(this).data("id")}, dataType: "json"}).done(loadPayments);
 }
 
 function loadOrders() {
-    $.ajax({type: "GET", url: ORDER_URL, data: {action: "getOrders"}, dataType: "json"}).done(function (response) {
+    $.ajax({type: "GET", url: ORDER_URL, data: {method: "getOrders"}, dataType: "json"}).done(function (response) {
         if (!response.orders.length) { $("#ordersContent").html('<p class="text-muted">Noch keine Bestellungen.</p>'); return; }
         let html = "";
         response.orders.forEach(function (order) {
             const items = order.items.map(item => item.menge + "× " + escapeHtml(item.name)).join(", ");
-            html += `<div class="card mb-3"><div class="card-body"><h3 class="h6">Bestellung Nr. ${order.id}</h3><p>${formatDate(order.created_at)} · ${order.gesamt.toFixed(2)} €</p><p>${items}</p><button class="btn btn-sm btn-outline-primary open-invoice" data-id="${order.id}">Rechnung anzeigen</button></div></div>`;
+            const voucherInfo = order.gutscheinbetrag > 0 ? ` <span class="text-success">(Gutschein: −${order.gutscheinbetrag.toFixed(2)} €)</span>` : "";
+            html += `<div class="card mb-3"><div class="card-body"><h3 class="h6">Bestellung Nr. ${order.id}</h3><p>${formatDate(order.created_at)} · ${order.gesamt.toFixed(2)} €${voucherInfo}</p><p>${items}</p><button class="btn btn-sm btn-outline-primary open-invoice" data-id="${order.id}">Rechnung anzeigen</button></div></div>`;
         });
         $("#ordersContent").html(html);
     });

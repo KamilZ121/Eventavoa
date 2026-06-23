@@ -30,7 +30,7 @@ function addToCart(productId) {
         method: "POST",
         dataType: "json",
         data: {
-            action: "addToCart",
+            method: "addToCart",
             product_id: productId,
             qty: 1
         },
@@ -81,7 +81,7 @@ function updateCartCount(count) {
         url: CART_URL,
         method: "GET",
         dataType: "json",
-        data: { action: "getCartCount" },
+        data: { method: "getCartCount" },
         success: function (response) {
             $("#cartCount").text(response.count);
         }
@@ -94,7 +94,7 @@ function loadCategories() {
         method: "GET",
         dataType: "json",
         data: {
-            action: "getCategories"
+            method: "getCategories"
         },
         success: function (response) {
             let options = '<option value="">Alle Kategorien</option>';
@@ -122,7 +122,7 @@ function loadProducts() {
         method: "GET",
         dataType: "json",
         data: {
-            action: "getProducts",
+            method: "getProducts",
             category_id: categoryId,
             search: search
         },

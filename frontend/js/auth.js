@@ -37,7 +37,7 @@ function login() {
         url: API,
         dataType: "json",
         data: {
-            action: "login",
+            method: "login",
             benutzername: $("#login_user").val(),
             passwort: $("#login_pass").val(),
             remember: $("#remember").is(":checked") ? "1" : "0"
@@ -75,7 +75,7 @@ function register() {
         url: API,
         dataType: "json",
         data: {
-            action: "register",
+            method: "register",
             anrede: $("#reg_anrede").val(),
             vorname: $("#reg_vorname").val(),
             nachname: $("#reg_nachname").val(),

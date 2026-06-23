@@ -11,9 +11,9 @@ function bootstrapApi(): void
     header('Cache-Control: no-store');
 }
 
-function requestAction(): string
+function requestMethod(): string
 {
-    return trim((string) ($_REQUEST['action'] ?? $_REQUEST['method'] ?? ''));
+    return trim((string) ($_REQUEST['method'] ?? ''));
 }
 
 function respond(array $payload, int $status = 200): never
@@ -39,4 +39,3 @@ function requireAdmin(): int
     }
     return $userId;
 }
-

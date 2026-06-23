@@ -6,10 +6,10 @@ require_once __DIR__ . '/../config/dataHandler.php';
 bootstrapApi();
 
 $dataHandler = new DataHandler();
-$action = requestAction();
+$method = requestMethod();
 $_SESSION['cart'] ??= [];
 
-if ($action === 'addToCart') {
+if ($method === 'addToCart') {
     $productId = (int) ($_POST['product_id'] ?? 0);
     $quantity = max(1, (int) ($_POST['qty'] ?? 1));
     if ($productId < 1 || !$dataHandler->getProductById($productId)) {
@@ -19,7 +19,7 @@ if ($action === 'addToCart') {
     respond(['success' => true, 'count' => cartCount()]);
 }
 
-if ($action === 'updateCart') {
+if ($method === 'updateCart') {
     $productId = (int) ($_POST['product_id'] ?? 0);
     $quantity = (int) ($_POST['qty'] ?? 1);
     if (isset($_SESSION['cart'][$productId])) {
@@ -32,13 +32,13 @@ if ($action === 'updateCart') {
     respond(cartContents($dataHandler));
 }
 
-if ($action === 'removeFromCart') {
+if ($method === 'removeFromCart') {
     unset($_SESSION['cart'][(int) ($_POST['product_id'] ?? 0)]);
     respond(cartContents($dataHandler));
 }
 
-if ($action === 'getCart') respond(cartContents($dataHandler));
-if ($action === 'getCartCount') respond(['success' => true, 'count' => cartCount()]);
+if ($method === 'getCart') respond(cartContents($dataHandler));
+if ($method === 'getCartCount') respond(['success' => true, 'count' => cartCount()]);
 respond(['success' => false, 'message' => 'Ungültige Aktion.'], 400);
 
 function cartCount(): int
@@ -46,7 +46,7 @@ function cartCount(): int
     return array_sum(array_map('intval', $_SESSION['cart']));
 }
 
-function cartContents($dataHandler)
+function cartContents(DataHandler $dataHandler): array
 {
     $items = []; $total = 0.0;
     foreach ($_SESSION['cart'] as $productId => $quantity) {

@@ -185,7 +185,7 @@ CREATE TABLE `orders` (
   `zahlung_id` int(10) unsigned DEFAULT NULL,
   `gutschein_id` int(10) unsigned DEFAULT NULL,
   `zwischensumme` decimal(10,2) NOT NULL DEFAULT 0.00,
-  `rabatt` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `gutscheinbetrag` decimal(10,2) NOT NULL DEFAULT 0.00,
   `gesamt` decimal(10,2) NOT NULL,
   `status` varchar(20) NOT NULL DEFAULT 'offen',
   `rechnungsnummer` varchar(30) DEFAULT NULL,
