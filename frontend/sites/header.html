@@ -45,6 +45,8 @@ $(function () {
     const cartUrl = "/eventavoa/backend/logic/cartHandler.php";
     const authUrl = "/eventavoa/backend/logic/authHandler.php";
 
+    refreshCartCount();
+
     $.ajax({url: authUrl, dataType: "json", cache: false, data: {method: "status"}}).done(function (status) {
         if (!status.loggedIn) return;
         $("#navLogin").addClass("d-none");
@@ -76,6 +78,13 @@ $(function () {
         });
     }).on("mouseleave", function () { $("#miniCart").addClass("d-none"); });
 });
+
+function refreshCartCount() {
+    $.ajax({url: "/eventavoa/backend/logic/cartHandler.php", dataType: "json", data: {method: "getCartCount"}})
+        .done(function (cart) {
+            $("#cartCount").text(cart.count);
+        });
+}
 
 function showWelcomeModal(status) {
     if (typeof bootstrap === "undefined" || !$("#welcomeModal").length) return;
