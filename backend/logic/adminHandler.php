@@ -123,13 +123,33 @@ if ($method === 'removeOrderItem') {
         $stmt->execute();
         $item = $stmt->get_result()->fetch_assoc();
         if (!$item) throw new DomainException('Position nicht gefunden.');
+        $orderId = (int) $item['order_id'];
+        $orderStmt = $conn->prepare('SELECT gutschein_id, zwischensumme, gutscheinbetrag FROM orders WHERE id = ? FOR UPDATE');
+        $orderStmt->bind_param('i', $orderId);
+        $orderStmt->execute();
+        $order = $orderStmt->get_result()->fetch_assoc();
+        if (!$order) throw new DomainException('Bestellung nicht gefunden.');
+
         $delete = $conn->prepare('DELETE FROM order_items WHERE id = ?');
         $delete->bind_param('i', $itemId);
         $delete->execute();
+
         $difference = (float) $item['menge'] * (float) $item['einzelpreis'];
-        $update = $conn->prepare('UPDATE orders SET zwischensumme = GREATEST(0, zwischensumme - ?), gesamt = GREATEST(0, gesamt - ?) WHERE id = ?');
-        $orderId = (int) $item['order_id'];
-        $update->bind_param('ddi', $difference, $difference, $orderId);
+        $newSubtotal = max(0.0, (float) $order['zwischensumme'] - $difference);
+        $oldVoucherAmount = (float) $order['gutscheinbetrag'];
+        $voucherRefund = min($difference, $oldVoucherAmount);
+        $newVoucherAmount = max(0.0, $oldVoucherAmount - $voucherRefund);
+        $newTotal = max(0.0, $newSubtotal - $newVoucherAmount);
+
+        if ($voucherRefund > 0 && $order['gutschein_id'] !== null) {
+            $voucherId = (int) $order['gutschein_id'];
+            $voucherUpdate = $conn->prepare('UPDATE vouchers SET remaining_value = LEAST(initial_value, remaining_value + ?) WHERE id = ?');
+            $voucherUpdate->bind_param('di', $voucherRefund, $voucherId);
+            $voucherUpdate->execute();
+        }
+
+        $update = $conn->prepare('UPDATE orders SET zwischensumme = ?, gutscheinbetrag = ?, gesamt = ? WHERE id = ?');
+        $update->bind_param('dddi', $newSubtotal, $newVoucherAmount, $newTotal, $orderId);
         $update->execute();
         $conn->commit();
         respond(['success' => true]);
